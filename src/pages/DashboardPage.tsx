@@ -204,7 +204,8 @@ export const DashboardPage = () => {
         hasPassword: !!newRoomPassword,
         createdAt: serverTimestamp(),
         members: [user.uid], // Owner is a member
-        roles: { [user.uid]: 'dm' } // Owner is DM
+        roles: { [user.uid]: 'dm' }, // Owner is DM
+        memberJoinedAt: { [user.uid]: serverTimestamp() }
       };
 
       const docRef = await addDoc(collection(db, 'artifacts', appId, 'rooms'), roomData);
@@ -252,7 +253,8 @@ export const DashboardPage = () => {
               // Password correct -> Join immediately
               await updateDoc(roomRef, {
                   members: arrayUnion(user.uid),
-                  [`roles.${user.uid}`]: selectedRole
+                  [`roles.${user.uid}`]: selectedRole,
+                  [`memberJoinedAt.${user.uid}`]: serverTimestamp()
               });
                // Add to user profile
               const userRef = doc(db, 'artifacts', appId, 'users', user.uid);
