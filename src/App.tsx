@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  signInAnonymously, 
-  onAuthStateChanged, 
-  signInWithCustomToken 
+import {
+  getAuth,
+  signInAnonymously,
+  onAuthStateChanged,
+  signInWithCustomToken
 } from 'firebase/auth';
-import { 
-  getFirestore, 
+import {
+  getFirestore,
   collection, 
   doc, 
   setDoc, 
@@ -48,6 +48,7 @@ import {
   Target,
   Zap
 } from 'lucide-react';
+import { calculateCasterLevel, formatModifier, getModifier, getProficiencyBonus, parseDamage } from './utils/stats.js';
 
 // --- Firebase Kurulumu ---
 const firebaseConfigString =
@@ -215,33 +216,6 @@ const SPELL_DB = [
 ];
 
 const STAT_ORDER = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
-
-// --- Yardımcı Fonksiyonlar ---
-const getModifier = (score) => Math.floor((score - 10) / 2);
-const formatModifier = (mod) => (mod >= 0 ? `+${mod}` : `${mod}`);
-const getProficiencyBonus = (level) => Math.ceil(level / 4) + 1;
-
-const calculateCasterLevel = (classes) => {
-  let total = 0;
-  classes.forEach(c => {
-    if (['Ozan','Ruhban','Druid','Sihirbaz (Sorcerer)','Büyücü (Wizard)'].includes(c.name)) total += c.level;
-    else if (['Paladin','Koruyucu'].includes(c.name)) total += Math.floor(c.level / 2);
-    else if (['Savaşçı','Hırsız'].includes(c.name)) total += Math.floor(c.level / 3);
-  });
-  return Math.max(0, total);
-};
-
-const parseDamage = (damageStr) => {
-  if(!damageStr) return { diceCount: 0, diceSides: 0, bonus: 0 };
-  const regex = /(\d+)d(\d+)([+-]\d+)?/;
-  const match = damageStr.match(regex);
-  if (!match) return { diceCount: 0, diceSides: 0, bonus: 0 };
-  return {
-    diceCount: parseInt(match[1]),
-    diceSides: parseInt(match[2]),
-    bonus: match[3] ? parseInt(match[3]) : 0
-  };
-};
 
 // --- Bileşenler ---
 
