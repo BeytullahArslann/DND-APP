@@ -1090,6 +1090,7 @@ export default function App() {
   const [role, setRole] = useState('player'); // Varsayılan
   const [selectedPlayerId, setSelectedPlayerId] = useState(null); // DM için seçili oyuncu
   const [copiedShareLink, setCopiedShareLink] = useState(false);
+  const firebaseUnavailableMessage = firebaseConfigIssue || 'Firebase yapılandırması doğrulanamadı.';
 
   const shareLink = useMemo(() => {
     if (typeof window === 'undefined') return '';
@@ -1101,6 +1102,8 @@ export default function App() {
   }, [roomCode]);
 
   useEffect(() => {
+    if (usingDemoConfig) return;
+
     const initAuth = async () => {
         if (initialAuthToken) {
             await signInWithCustomToken(auth, initialAuthToken);
@@ -1112,6 +1115,18 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, (u) => setUser(u));
     return () => unsubscribe();
   }, []);
+
+  if (usingDemoConfig) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-900 text-amber-500 text-center px-6">
+        <div className="max-w-xl space-y-3">
+          <p className="text-xl font-semibold">Firebase yapılandırması bulunamadı</p>
+          <p className="text-sm text-amber-200/80">{firebaseUnavailableMessage}</p>
+          <p className="text-sm text-amber-200/70">Lütfen geçerli VITE_FIREBASE_CONFIG ayarlarını sağlayın.</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleJoin = (userName, room, selectedRole) => {
     if (user) {
