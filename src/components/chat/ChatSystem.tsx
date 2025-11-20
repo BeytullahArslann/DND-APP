@@ -15,12 +15,15 @@ import {
   updateDoc,
   arrayUnion
 } from 'firebase/firestore';
-import { db, appId } from '../../lib/firebase';
-import { Send, UserPlus, User, MessageSquare, X, Users } from 'lucide-react';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, appId, storage } from '../../lib/firebase';
+import { Send, UserPlus, User, MessageSquare, X, Users, Smile, Image as ImageIcon, Loader2 } from 'lucide-react';
+import EmojiPicker, { Theme } from 'emoji-picker-react';
 
 interface Message {
   id: string;
   text: string;
+  imageUrl?: string;
   senderId: string;
   senderName: string;
   timestamp: any;
@@ -40,7 +43,11 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
   const [friendSearchEmail, setFriendSearchEmail] = useState('');
   const [view, setView] = useState<'room' | 'friends'>('room');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Effect: Decide view
   useEffect(() => {
@@ -117,9 +124,9 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !user) return;
+  const handleSendMessage = async (e?: React.FormEvent, imageUrl?: string) => {
+    if (e) e.preventDefault();
+    if ((!newMessage.trim() && !imageUrl) || !user) return;
 
     let collectionPath = '';
     if (view === 'room' && roomId) {
@@ -133,12 +140,40 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
 
     await addDoc(collection(db, collectionPath), {
         text: newMessage,
+        imageUrl: imageUrl || null,
         senderId: user.uid,
         senderName: user.displayName,
         timestamp: serverTimestamp()
     });
 
     setNewMessage('');
+    setShowEmojiPicker(false);
+  };
+
+  const handleEmojiClick = (emojiData: any) => {
+      setNewMessage(prev => prev + emojiData.emoji);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!user || !e.target.files || e.target.files.length === 0) return;
+
+      const file = e.target.files[0];
+      if (file.size > 5 * 1024 * 1024) {
+          alert('Dosya boyutu çok büyük (Max 5MB).');
+          return;
+      }
+
+      setIsUploading(true);
+      try {
+          const storageRef = ref(storage, `chat/${user.uid}/${Date.now()}_${file.name}`);
+          await uploadBytes(storageRef, file);
+          const url = await getDownloadURL(storageRef);
+          await handleSendMessage(undefined, url);
+      } catch (error) {
+          console.error("Upload failed", error);
+          alert("Yükleme başarısız.");
+      }
+      setIsUploading(false);
   };
 
   const handleAddFriend = async () => {
@@ -160,16 +195,26 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
           return;
       }
 
-      // Add to both users' friend lists (Auto accept for simplicity for now, or request logic?)
-      // "oyuncular birbirlerini arkadas olarak ekleyebilsin" -> Let's do auto-add for MVP
-      const userRef = doc(db, 'artifacts', appId, 'users', user.uid);
+      // Send Request
       const friendRef = doc(db, 'artifacts', appId, 'users', friendId);
 
-      await updateDoc(userRef, { friends: arrayUnion(friendId) });
-      await updateDoc(friendRef, { friends: arrayUnion(user.uid) });
+      // Check if already friends or requested (simplified)
+      const friendData = friendDoc.data();
+      if (friendData.friends?.includes(user.uid)) {
+          alert('Zaten arkadaşsınız.');
+          return;
+      }
+      if (friendData.friendRequests?.includes(user.uid)) {
+          alert('Zaten istek gönderilmiş.');
+          return;
+      }
+
+      await updateDoc(friendRef, {
+          friendRequests: arrayUnion(user.uid)
+      });
 
       setFriendSearchEmail('');
-      alert('Arkadaş eklendi!');
+      alert('Arkadaşlık isteği gönderildi!');
   };
 
   return (
@@ -246,11 +291,16 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
                     )}
 
                     {/* Messages Area */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-slate-700">
                         {messages.map(msg => (
                             <div key={msg.id} className={`flex flex-col ${msg.senderId === user?.uid ? 'items-end' : 'items-start'}`}>
                                 <div className={`max-w-[85%] rounded-lg p-2 text-sm ${msg.senderId === user?.uid ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-200'}`}>
                                     {msg.senderId !== user?.uid && <div className="text-[10px] text-slate-400 mb-1">{msg.senderName}</div>}
+
+                                    {msg.imageUrl && (
+                                        <img src={msg.imageUrl} alt="Attachment" className="max-w-full rounded mb-2 max-h-40 object-cover" />
+                                    )}
+
                                     {msg.text}
                                 </div>
                                 <span className="text-[10px] text-slate-600 mt-1">
@@ -262,17 +312,49 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
                     </div>
 
                     {/* Input Area */}
-                    <form onSubmit={handleSendMessage} className="p-3 bg-slate-800 border-t border-slate-700 flex space-x-2">
-                        <input
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            className="flex-1 bg-slate-900 border border-slate-600 rounded-full px-4 py-2 text-white text-sm focus:border-indigo-500 outline-none"
-                            placeholder="Mesaj yaz..."
-                        />
-                        <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-full">
-                            <Send size={18} />
-                        </button>
-                    </form>
+                    <div className="p-3 bg-slate-800 border-t border-slate-700 relative">
+                        {showEmojiPicker && (
+                            <div className="absolute bottom-16 left-0 z-50">
+                                <EmojiPicker theme={Theme.DARK} onEmojiClick={handleEmojiClick} width={300} height={400} />
+                            </div>
+                        )}
+
+                        <form onSubmit={(e) => handleSendMessage(e)} className="flex space-x-2 items-center">
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="text-slate-400 hover:text-white p-2"
+                                disabled={isUploading}
+                            >
+                                {isUploading ? <Loader2 className="animate-spin" size={20} /> : <ImageIcon size={20} />}
+                            </button>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                            />
+
+                            <button
+                                type="button"
+                                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                className="text-slate-400 hover:text-amber-400 p-2"
+                            >
+                                <Smile size={20} />
+                            </button>
+
+                            <input
+                                value={newMessage}
+                                onChange={(e) => setNewMessage(e.target.value)}
+                                className="flex-1 bg-slate-900 border border-slate-600 rounded-full px-4 py-2 text-white text-sm focus:border-indigo-500 outline-none"
+                                placeholder="Mesaj yaz..."
+                            />
+                            <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-full">
+                                <Send size={18} />
+                            </button>
+                        </form>
+                    </div>
                 </>
             )}
         </div>

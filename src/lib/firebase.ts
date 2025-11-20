@@ -1,6 +1,7 @@
 import { FirebaseOptions, initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 const demoFirebaseConfig: FirebaseOptions = {
   apiKey: 'demo',
@@ -38,6 +39,7 @@ export const firebaseConfig = getFirebaseConfig();
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 export const appId = import.meta.env.VITE_APP_ID?.trim() || 'default';
 export const initialAuthToken = import.meta.env.VITE_INITIAL_AUTH_TOKEN;

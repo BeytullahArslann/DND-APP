@@ -4,14 +4,23 @@ import { useAuth } from '../context/AuthContext';
 import { DiceRoller } from '../components/game/DiceRoller';
 import { CharacterSheet } from '../components/game/CharacterSheet';
 import { PartyView } from '../components/game/PartyView';
+import { ChatSystem } from '../components/chat/ChatSystem';
 import {
   doc,
   getDoc,
-  onSnapshot
+  onSnapshot,
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  updateDoc,
+  arrayUnion
 } from 'firebase/firestore';
 import { db, appId } from '../lib/firebase';
-import { Dices, Scroll, Users, Crown, Eye, Settings, Link2, Share2 } from 'lucide-react';
+import { Dices, Scroll, Users, Crown, Eye, Settings, Link2, Share2, Copy, Mail, ChevronRight, ChevronLeft } from 'lucide-react';
 import { RoomSettings } from '../components/room/RoomSettings';
+import { Modal } from '../components/Modal';
 
 export const RoomPage = () => {
   const { roomId } = useParams();
@@ -22,6 +31,11 @@ export const RoomPage = () => {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null); // For DM view
   const [showSettings, setShowSettings] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Layout State
+  const [isChatOpen, setIsChatOpen] = useState(true);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
 
   useEffect(() => {
     if (!roomId || !user) return;
@@ -61,20 +75,90 @@ export const RoomPage = () => {
   };
 
   const handleCopyLink = () => {
-      navigator.clipboard.writeText(window.location.href);
+      const url = window.location.href;
+      navigator.clipboard.writeText(url);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
   };
 
+  const handleCopyCode = () => {
+      navigator.clipboard.writeText(roomId!);
+      alert('Oda kodu kopyalandı: ' + roomId);
+  };
+
+  const handleInviteByEmail = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!inviteEmail.trim() || !user) return;
+
+      try {
+          const q = query(collection(db, 'artifacts', appId, 'users'), where('email', '==', inviteEmail));
+          const snap = await getDocs(q);
+
+          if (snap.empty) {
+              alert('Bu e-posta ile kayıtlı kullanıcı bulunamadı.');
+              return;
+          }
+
+          const targetUserDoc = snap.docs[0];
+          const targetUserRef = doc(db, 'artifacts', appId, 'users', targetUserDoc.id);
+
+          // Check if already in room
+          if (roomData.members?.includes(targetUserDoc.id)) {
+              alert('Kullanıcı zaten odada.');
+              return;
+          }
+
+          // Add to target user's roomInvites
+          const inviteData = {
+              roomId: roomId,
+              roomName: roomData.name,
+              inviterName: user.displayName,
+              timestamp: Date.now()
+          };
+
+          await updateDoc(targetUserRef, {
+              roomInvites: arrayUnion(inviteData)
+          });
+
+          alert(`${inviteEmail} adresine davet gönderildi!`);
+          setInviteEmail('');
+          setShowInviteModal(false);
+      } catch (e) {
+          console.error(e);
+          alert('Hata oluştu.');
+      }
+  };
+
   return (
-    <div className="flex flex-col h-full bg-slate-900 text-slate-100 overflow-hidden relative">
+    <div className="flex h-full bg-slate-900 text-slate-100 overflow-hidden relative">
+      {/* Game Area */}
+      <div className="flex-1 flex flex-col min-w-0 relative transition-all duration-300">
        {/* Header */}
        <header className="bg-slate-800 p-3 shadow-md border-b border-slate-700 flex justify-between items-center z-10">
         <div className="flex items-center space-x-3">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
           <span className="font-bold text-amber-500 truncate max-w-[150px] md:max-w-xs">{roomData.name}</span>
+
+          {/* Room Code Display */}
+          <div
+            onClick={handleCopyCode}
+            className="hidden md:flex items-center bg-slate-900/50 px-2 py-1 rounded border border-slate-700 text-xs text-slate-400 cursor-pointer hover:bg-slate-700 hover:text-white ml-4"
+            title="Oda Kodunu Kopyala"
+          >
+             <span className="font-mono mr-2">ID: {roomId}</span>
+             <Copy size={12} />
+          </div>
         </div>
+
         <div className="flex items-center space-x-2 text-sm text-slate-400">
+             <button
+                onClick={() => setShowInviteModal(true)}
+                className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors"
+                title="E-posta ile Davet Et"
+            >
+                <Mail size={18} />
+            </button>
+
             <button
                 onClick={handleCopyLink}
                 className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors"
@@ -99,6 +183,13 @@ export const RoomPage = () => {
                 </>
             )}
             {userRole === 'spectator' && <span className="flex items-center text-blue-400"><Eye className="w-3 h-3 mr-1"/> İzleyici</span>}
+
+            <button
+                onClick={() => setIsChatOpen(!isChatOpen)}
+                className={`ml-2 p-1 rounded border ${isChatOpen ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-400 border-slate-600'}`}
+            >
+                {isChatOpen ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
         </div>
       </header>
 
@@ -163,6 +254,32 @@ export const RoomPage = () => {
           </button>
         </div>
       </nav>
+      </div>
+
+      {/* Right Sidebar: Chat */}
+      <div className={`${isChatOpen ? 'w-80' : 'w-0'} transition-all duration-300 border-l border-slate-700 bg-slate-900 overflow-hidden flex flex-col relative z-20`}>
+          <ChatSystem roomId={roomId} isOverlay={false} />
+      </div>
+
+      {/* Modals */}
+      <Modal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} title="Arkadaş Davet Et">
+          <form onSubmit={handleInviteByEmail} className="space-y-4">
+              <div>
+                  <label className="block text-sm font-bold text-slate-400 mb-1">Arkadaş E-posta</label>
+                  <input
+                    type="email"
+                    required
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white focus:border-amber-500 outline-none"
+                    placeholder="ornek@email.com"
+                  />
+              </div>
+              <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded">
+                  Davet Gönder
+              </button>
+          </form>
+      </Modal>
 
       <style>{`
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }

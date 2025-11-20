@@ -11,11 +11,14 @@ import {
   doc,
   updateDoc,
   arrayUnion,
-  getDoc
+  getDoc,
+  limit,
+  onSnapshot,
+  arrayRemove
 } from 'firebase/firestore';
 import { db, appId } from '../lib/firebase';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Lock, Users, DoorOpen, LogIn } from 'lucide-react';
+import { Plus, Search, Lock, Users, DoorOpen, LogIn, UserPlus, Check, X } from 'lucide-react';
 
 export const DashboardPage = () => {
   const { user } = useAuth();
@@ -34,26 +37,114 @@ export const DashboardPage = () => {
   const [selectedRole, setSelectedRole] = useState('player');
   const [joinError, setJoinError] = useState('');
 
-  // Public Rooms List
-  const [publicRooms, setPublicRooms] = useState<any[]>([]);
+  // Friends & Requests
+  const [friends, setFriends] = useState<any[]>([]);
+  const [friendRequests, setFriendRequests] = useState<any[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(true);
 
-  // Fetch public rooms
+  // Fetch friends and requests
   useEffect(() => {
-    const fetchPublicRooms = async () => {
-        const q = query(
-            collection(db, 'artifacts', appId, 'rooms'),
-            where('isPrivate', '==', false) // Only fetch public or non-password protected? Or fetch all and show lock?
-            // Let's say we fetch recent rooms for now.
-        );
-        // Ideally use a separate collection for public listings or an index
-        // For simplicity, let's just query all rooms (limit 20) and filter client side if needed
-        // or just show rooms where user is NOT a member.
+    if (!user) return;
+    const userRef = doc(db, 'artifacts', appId, 'users', user.uid);
 
-        // NOTE: Firestore requires index for complex queries. Let's keep it simple.
-        // We will just show "Featured" or list created rooms.
-    };
-    // fetchPublicRooms();
-  }, []);
+    const unsubscribe = onSnapshot(userRef, async (docSnap) => {
+      if (docSnap.exists()) {
+        const userData = docSnap.data();
+
+        // Handle Friend Requests
+        const requests = userData.friendRequests || [];
+        if (requests.length > 0) {
+             // Fetch profiles of requesters
+             const reqPromises = requests.map((uid: string) => getDoc(doc(db, 'artifacts', appId, 'users', uid)));
+             const reqSnaps = await Promise.all(reqPromises);
+             const reqList = reqSnaps.map(snap => snap.exists() ? { uid: snap.id, ...snap.data() } : null).filter(Boolean);
+             setFriendRequests(reqList);
+        } else {
+            setFriendRequests([]);
+        }
+
+        // Handle Friends List
+        const friendUids = userData.friends || [];
+        if (friendUids.length > 0) {
+             const friendPromises = friendUids.map((uid: string) => getDoc(doc(db, 'artifacts', appId, 'users', uid)));
+             const friendSnaps = await Promise.all(friendPromises);
+             const friendList = friendSnaps.map(snap => snap.exists() ? { uid: snap.id, ...snap.data() } : null).filter(Boolean);
+             setFriends(friendList);
+        } else {
+            setFriends([]);
+        }
+        setLoadingFriends(false);
+      }
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  const handleAcceptFriend = async (requesterId: string) => {
+      if (!user) return;
+      const userRef = doc(db, 'artifacts', appId, 'users', user.uid);
+      const requesterRef = doc(db, 'artifacts', appId, 'users', requesterId);
+
+      // Add to both friends lists
+      await updateDoc(userRef, {
+          friends: arrayUnion(requesterId),
+          friendRequests: arrayRemove(requesterId)
+      });
+      await updateDoc(requesterRef, {
+          friends: arrayUnion(user.uid)
+      });
+  };
+
+  const handleRejectFriend = async (requesterId: string) => {
+       if (!user) return;
+       const userRef = doc(db, 'artifacts', appId, 'users', user.uid);
+       await updateDoc(userRef, {
+          friendRequests: arrayRemove(requesterId)
+      });
+  };
+
+  // Hub: Public Rooms
+  const [publicRooms, setPublicRooms] = useState<any[]>([]);
+  const [lastVisible, setLastVisible] = useState<any>(null);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [roomSearch, setRoomSearch] = useState('');
+  const [showHub, setShowHub] = useState(false); // Toggle between Dashboard and Hub
+
+  const fetchPublicRooms = async (isNext = false) => {
+      setLoadingRooms(true);
+      try {
+          let q = query(
+              collection(db, 'artifacts', appId, 'rooms'),
+              // orderBy('createdAt', 'desc'), // Requires index
+              // where('isPrivate', '==', false),
+              limit(10)
+          );
+
+          if (isNext && lastVisible) {
+             // q = query(q, startAfter(lastVisible));
+             // Firestore pagination requires consistent ordering.
+             // Simplified for now: just fetch all and filter client side for search, or use limit.
+          }
+
+          const snapshot = await getDocs(q);
+          const rooms = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+          setPublicRooms(rooms); // Should append if paging
+          setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
+      } catch (error) {
+          console.error("Error fetching rooms", error);
+      }
+      setLoadingRooms(false);
+  };
+
+  useEffect(() => {
+      if (showHub) {
+          fetchPublicRooms();
+      }
+  }, [showHub]);
+
+  const filteredRooms = publicRooms.filter(r =>
+    r.name?.toLowerCase().includes(roomSearch.toLowerCase())
+  );
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,43 +249,162 @@ export const DashboardPage = () => {
   return (
     <div className="p-8 h-full overflow-y-auto">
       <div className="max-w-4xl mx-auto">
-        <header className="mb-8 flex justify-between items-center">
+        <header className="mb-8 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Lobi</h1>
-            <p className="text-slate-400">Yeni bir maceraya başla veya mevcut birine katıl.</p>
+            <h1 className="text-3xl font-bold text-white mb-2">{showHub ? 'Oyun Merkezi (Hub)' : 'Lobi'}</h1>
+            <p className="text-slate-400">{showHub ? 'Tüm açık oyunları keşfet.' : 'Yeni bir maceraya başla veya mevcut birine katıl.'}</p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-2 md:gap-4 flex-wrap">
+             <button
+                onClick={() => setShowHub(!showHub)}
+                className={`px-6 py-3 rounded-lg font-bold flex items-center border transition-colors ${showHub ? 'bg-slate-700 border-slate-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'}`}
+            >
+                <DoorOpen className="mr-2 w-5 h-5" /> {showHub ? 'Lobime Dön' : 'Tüm Oyunlar'}
+            </button>
+
             <button
                 onClick={() => setIsJoinModalOpen(true)}
                 className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-lg font-bold flex items-center border border-slate-700 transition-colors"
             >
-                <Search className="mr-2 w-5 h-5" /> Odaya Katıl
+                <Search className="mr-2 w-5 h-5" /> Kod İle Katıl
             </button>
             <button
                 onClick={() => setIsCreateModalOpen(true)}
                 className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-lg font-bold flex items-center shadow-lg transition-colors"
             >
-                <Plus className="mr-2 w-5 h-5" /> Yeni Oda Oluştur
+                <Plus className="mr-2 w-5 h-5" /> Yeni Oda
             </button>
           </div>
         </header>
 
-        {/* Placeholder for Public Rooms or Featured content */}
+        {showHub ? (
+             <div className="space-y-6">
+                 {/* Hub Search */}
+                 <div className="relative">
+                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500" />
+                     <input
+                        value={roomSearch}
+                        onChange={(e) => setRoomSearch(e.target.value)}
+                        placeholder="Oda adı ara..."
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white focus:border-indigo-500 outline-none"
+                     />
+                 </div>
+
+                 {/* Room List Grid */}
+                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                     {loadingRooms ? (
+                         <div className="col-span-full text-center text-slate-500 py-8">Odalar yükleniyor...</div>
+                     ) : filteredRooms.length === 0 ? (
+                         <div className="col-span-full text-center text-slate-500 py-8">Oda bulunamadı.</div>
+                     ) : (
+                         filteredRooms.map(room => (
+                             <div key={room.id} className="bg-slate-800 border border-slate-700 rounded-xl p-4 hover:border-indigo-500 transition-colors relative group">
+                                 <div className="flex items-start justify-between mb-2">
+                                     <div className="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center text-xl font-bold text-slate-300">
+                                         {room.name?.substring(0,2).toUpperCase()}
+                                     </div>
+                                     {room.hasPassword && <Lock className="w-4 h-4 text-amber-500" />}
+                                 </div>
+                                 <h3 className="font-bold text-white truncate mb-1">{room.name}</h3>
+                                 <div className="text-xs text-slate-500 mb-4">
+                                     {room.members?.length || 1} Oyuncu
+                                 </div>
+                                 <button
+                                    onClick={() => {
+                                        setJoinRoomId(room.id);
+                                        setIsJoinModalOpen(true);
+                                    }}
+                                    className="w-full bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white py-2 rounded font-bold text-sm transition-all"
+                                 >
+                                     Katıl
+                                 </button>
+                             </div>
+                         ))
+                     )}
+                 </div>
+             </div>
+        ) : (
         <div className="grid md:grid-cols-2 gap-6">
+            {/* Friend Requests */}
             <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
-                <h2 className="text-xl font-bold text-white mb-4 flex items-center"><Users className="mr-2"/> Arkadaşların</h2>
-                <div className="text-slate-500 text-center py-8">
-                    Henüz arkadaş eklemedin.
+                <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+                    <UserPlus className="mr-2"/> Arkadaş İstekleri
+                    {friendRequests.length > 0 && (
+                        <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{friendRequests.length}</span>
+                    )}
+                </h2>
+                <div className="space-y-2">
+                    {friendRequests.length === 0 ? (
+                         <div className="text-slate-500 text-center py-4">Bekleyen istek yok.</div>
+                    ) : (
+                        friendRequests.map(req => (
+                            <div key={req.uid} className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg">
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center font-bold">
+                                        {req.displayName?.substring(0,2).toUpperCase()}
+                                    </div>
+                                    <span className="font-medium text-sm">{req.displayName}</span>
+                                </div>
+                                <div className="flex space-x-2">
+                                    <button
+                                        onClick={() => handleAcceptFriend(req.uid)}
+                                        className="p-1 bg-green-600 hover:bg-green-700 rounded text-white"
+                                    >
+                                        <Check size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleRejectFriend(req.uid)}
+                                        className="p-1 bg-red-600 hover:bg-red-700 rounded text-white"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
 
+            {/* Friend List */}
             <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
-                <h2 className="text-xl font-bold text-white mb-4 flex items-center"><DoorOpen className="mr-2"/> Bekleyen Davetler</h2>
+                <h2 className="text-xl font-bold text-white mb-4 flex items-center"><Users className="mr-2"/> Arkadaşların</h2>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                    {loadingFriends ? (
+                        <div className="text-slate-500 text-center py-4">Yükleniyor...</div>
+                    ) : friends.length === 0 ? (
+                        <div className="text-slate-500 text-center py-4">Henüz arkadaş eklemedin.</div>
+                    ) : (
+                        friends.map(f => (
+                             <div key={f.uid} className="flex items-center p-3 bg-slate-700/30 rounded-lg">
+                                <div className="w-10 h-10 bg-slate-600 rounded-full flex items-center justify-center font-bold mr-3">
+                                    {f.photoURL ? (
+                                        <img src={f.photoURL} alt={f.displayName} className="w-full h-full rounded-full object-cover"/>
+                                    ) : (
+                                        f.displayName?.substring(0,2).toUpperCase()
+                                    )}
+                                </div>
+                                <div>
+                                    <div className="font-bold text-sm">{f.displayName}</div>
+                                    <div className="text-xs text-slate-400 truncate max-w-[150px]">{f.email}</div>
+                                </div>
+                                <div className="ml-auto flex items-center space-x-2">
+                                    <div className={`w-2 h-2 rounded-full ${f.isOnline ? 'bg-green-500' : 'bg-slate-500'}`} />
+                                </div>
+                             </div>
+                        ))
+                    )}
+                </div>
+            </div>
+
+            {/* Room Invites (Placeholder for now) */}
+            <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 md:col-span-2">
+                <h2 className="text-xl font-bold text-white mb-4 flex items-center"><DoorOpen className="mr-2"/> Bekleyen Oyun Davetleri</h2>
                 <div className="text-slate-500 text-center py-8">
                     Bekleyen davet yok.
                 </div>
             </div>
         </div>
+        )}
 
         {/* CREATE ROOM MODAL */}
         <Modal
