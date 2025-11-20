@@ -16,8 +16,8 @@ const defaultBase = normalizeBase(repoBase) ?? '/';
 
 export default defineConfig(({ command }) => ({
   plugins: [react()],
-  // Prefer an explicit BASE_PATH when provided, fall back to the repository name on GitHub Pages builds.
-  base: envBase ?? (command === 'build' ? defaultBase : '/'),
+  // Allow overriding the base path for GitHub Pages deployments.
+  base: process.env.BASE_PATH || '/',
   server: {
     host: '0.0.0.0',
     port: 5173
