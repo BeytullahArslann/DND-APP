@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { initializeApp } from 'firebase/app';
+import { FirebaseOptions, initializeApp } from 'firebase/app';
 import {
   getAuth,
   signInAnonymously,
@@ -51,24 +51,63 @@ import {
 import { calculateCasterLevel, formatModifier, getModifier, getProficiencyBonus, parseDamage } from './utils/stats.js';
 
 // --- Firebase Kurulumu ---
-const firebaseConfigString =
-  import.meta.env.VITE_FIREBASE_CONFIG ||
-  JSON.stringify({
-    apiKey: 'demo',
-    authDomain: 'demo.firebaseapp.com',
-    projectId: 'demo',
-    storageBucket: 'demo.appspot.com',
-    messagingSenderId: '000000000000',
-    appId: '1:demo:web:demo'
-  });
+const demoFirebaseConfig: FirebaseOptions = {
+  apiKey: 'demo',
+  authDomain: 'demo.firebaseapp.com',
+  projectId: 'demo',
+  storageBucket: 'demo.appspot.com',
+  messagingSenderId: '000000000000',
+  appId: '1:demo:web:demo'
+};
 
-const firebaseConfig = JSON.parse(firebaseConfigString);
+type FirebaseConfigResult = {
+  config: FirebaseOptions;
+  issue?: string;
+};
+
+const requiredFirebaseKeys: (keyof FirebaseOptions)[] = ['apiKey', 'authDomain', 'projectId', 'appId'];
+
+const getFirebaseConfig = (): FirebaseConfigResult => {
+  const rawConfig = import.meta.env.VITE_FIREBASE_CONFIG;
+
+  if (rawConfig) {
+    try {
+      const parsedConfig = JSON.parse(rawConfig);
+
+      if (parsedConfig && typeof parsedConfig === 'object') {
+        const missingKeys = requiredFirebaseKeys.filter((key) => !parsedConfig[key] || typeof parsedConfig[key] !== 'string' || parsedConfig[key].trim() === '');
+
+        if (missingKeys.length === 0) {
+          return { config: parsedConfig as FirebaseOptions };
+        }
+
+        return {
+          config: demoFirebaseConfig,
+          issue: `Eksik Firebase ayarları: ${missingKeys.join(', ')}`
+        };
+      }
+    } catch (error) {
+      console.warn('VITE_FIREBASE_CONFIG JSON parse failed, falling back to demo config.', error);
+      return {
+        config: demoFirebaseConfig,
+        issue: 'VITE_FIREBASE_CONFIG değeri parse edilemedi'
+      };
+    }
+  }
+
+  return {
+    config: demoFirebaseConfig,
+    issue: 'VITE_FIREBASE_CONFIG tanımlı değil'
+  };
+};
+
+const { config: firebaseConfig, issue: firebaseConfigIssue } = getFirebaseConfig();
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = import.meta.env.VITE_APP_ID ?? 'default-app-id';
+const appId = import.meta.env.VITE_APP_ID?.trim() || 'default';
 const initialAuthToken = import.meta.env.VITE_INITIAL_AUTH_TOKEN;
-const usingDemoConfig = !import.meta.env.VITE_FIREBASE_CONFIG;
+const usingDemoConfig = firebaseConfig === demoFirebaseConfig;
 
 // --- 5eTürkçe (Kanguen) Kural Setleri ---
 
@@ -1074,6 +1113,7 @@ export default function App() {
   const [role, setRole] = useState('player'); // Varsayılan
   const [selectedPlayerId, setSelectedPlayerId] = useState(null); // DM için seçili oyuncu
   const [copiedShareLink, setCopiedShareLink] = useState(false);
+  const firebaseUnavailableMessage = firebaseConfigIssue || 'Firebase yapılandırması doğrulanamadı.';
 
   const shareLink = useMemo(() => {
     if (typeof window === 'undefined') return '';
@@ -1085,6 +1125,8 @@ export default function App() {
   }, [roomCode]);
 
   useEffect(() => {
+    if (usingDemoConfig) return;
+
     const initAuth = async () => {
         if (initialAuthToken) {
             await signInWithCustomToken(auth, initialAuthToken);
@@ -1096,6 +1138,18 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, (u) => setUser(u));
     return () => unsubscribe();
   }, []);
+
+  if (usingDemoConfig) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-900 text-amber-500 text-center px-6">
+        <div className="max-w-xl space-y-3">
+          <p className="text-xl font-semibold">Firebase yapılandırması bulunamadı</p>
+          <p className="text-sm text-amber-200/80">{firebaseUnavailableMessage}</p>
+          <p className="text-sm text-amber-200/70">Lütfen geçerli VITE_FIREBASE_CONFIG ayarlarını sağlayın.</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleJoin = (userName, room, selectedRole) => {
     if (user) {
