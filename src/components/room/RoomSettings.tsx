@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import {
   doc,
@@ -6,7 +6,8 @@ import {
   arrayUnion,
   arrayRemove,
   deleteDoc,
-  getDoc
+  getDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 import { db, appId } from '../../lib/firebase';
 import {
@@ -27,6 +28,27 @@ interface RoomSettingsProps {
 export const RoomSettings = ({ roomData, isOpen, onClose }: RoomSettingsProps) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [memberDetails, setMemberDetails] = useState<{[key: string]: any}>({});
+
+  useEffect(() => {
+      if (!roomData.members) return;
+
+      const fetchMembers = async () => {
+          const details: {[key: string]: any} = {};
+          for (const uid of roomData.members) {
+              try {
+                const userDoc = await getDoc(doc(db, 'artifacts', appId, 'users', uid));
+                if (userDoc.exists()) {
+                    details[uid] = userDoc.data();
+                }
+              } catch (e) {
+                  console.error("Failed to fetch user", uid);
+              }
+          }
+          setMemberDetails(details);
+      };
+      fetchMembers();
+  }, [roomData.members]);
 
   const handleApprove = async (request: any) => {
     if (loading) return;
@@ -36,6 +58,7 @@ export const RoomSettings = ({ roomData, isOpen, onClose }: RoomSettingsProps) =
         await updateDoc(roomRef, {
             members: arrayUnion(request.uid),
             [`roles.${request.uid}`]: request.role,
+            [`memberJoinedAt.${request.uid}`]: serverTimestamp(),
             pendingRequests: arrayRemove(request)
         });
 
@@ -130,20 +153,45 @@ export const RoomSettings = ({ roomData, isOpen, onClose }: RoomSettingsProps) =
             {/* Member List */}
             <div>
                 <h4 className="text-sm font-bold text-slate-400 uppercase mb-2">Üyeler</h4>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {roomData.members?.map((uid: string) => (
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {roomData.members?.map((uid: string) => {
+                        const details = memberDetails[uid];
+                        const joinDate = roomData.memberJoinedAt?.[uid];
+                        let dateStr = "";
+                        if (joinDate) {
+                             // Handle Firestore Timestamp or basic number
+                             const date = joinDate.toDate ? joinDate.toDate() : new Date(joinDate);
+                             dateStr = date.toLocaleDateString();
+                        }
+
+                        return (
                         <div key={uid} className="flex items-center justify-between bg-slate-900 p-2 rounded border border-slate-700">
-                            <div className="text-white text-sm truncate w-40">
-                                {uid === roomData.ownerId ? <span className="text-amber-500 font-bold">👑 (Sahip)</span> : uid}
-                                {/* Ideally we would fetch names, but UID is fast */}
+                            <div className="flex items-center min-w-0 gap-2">
+                                <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center flex-shrink-0">
+                                    {details?.photoURL ? (
+                                        <img src={details.photoURL} className="w-full h-full rounded-full object-cover"/>
+                                    ) : (
+                                        <span className="text-xs font-bold text-slate-500">
+                                            {details?.displayName?.substring(0,2).toUpperCase() || uid.substring(0,2)}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="text-white text-sm font-bold truncate max-w-[120px]">
+                                        {details?.displayName || uid}
+                                        {uid === roomData.ownerId && <span className="text-amber-500 ml-1">👑</span>}
+                                    </div>
+                                    {dateStr && <div className="text-[10px] text-slate-500">{dateStr} tarihinde katıldı</div>}
+                                </div>
                             </div>
+
                             {uid !== roomData.ownerId && (
-                                <button onClick={() => handleKick(uid)} className="text-red-500 hover:text-red-300" title="At">
+                                <button onClick={() => handleKick(uid)} className="text-red-500 hover:text-red-300 p-1" title="At">
                                     <UserX size={16} />
                                 </button>
                             )}
                         </div>
-                    ))}
+                    )})}
                 </div>
             </div>
 
