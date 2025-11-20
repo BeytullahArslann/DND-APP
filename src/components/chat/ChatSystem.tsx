@@ -20,6 +20,7 @@ import { db, appId, storage } from '../../lib/firebase';
 import { Send, UserPlus, User, MessageSquare, X, Users, Smile, Image as ImageIcon, Loader2 } from 'lucide-react';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { useToast } from '../../context/ToastContext';
+import { useTranslation } from 'react-i18next';
 
 interface Message {
   id: string;
@@ -39,6 +40,7 @@ interface ChatSystemProps {
 export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
   const { user } = useAuth();
   const { addToast } = useToast();
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [friends, setFriends] = useState<any[]>([]);
@@ -161,7 +163,7 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
 
       const file = e.target.files[0];
       if (file.size > 5 * 1024 * 1024) {
-          addToast('Dosya boyutu çok büyük (Max 5MB).', 'error');
+          addToast(t('chat.file_too_large'), 'error');
           return;
       }
 
@@ -173,7 +175,7 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
           await handleSendMessage(undefined, url);
       } catch (error) {
           console.error("Upload failed", error);
-          addToast("Yükleme başarısız.", 'error');
+          addToast(t('chat.upload_fail'), 'error');
       }
       setIsUploading(false);
   };
@@ -185,7 +187,7 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
-          addToast('Kullanıcı bulunamadı.', 'error');
+          addToast(t('chat.user_not_found'), 'error');
           return;
       }
 
@@ -193,7 +195,7 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
       const friendId = friendDoc.id;
 
       if (friendId === user.uid) {
-          addToast('Kendini ekleyemezsin.', 'info');
+          addToast(t('chat.self_add_error'), 'info');
           return;
       }
 
@@ -203,11 +205,11 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
       // Check if already friends or requested (simplified)
       const friendData = friendDoc.data();
       if (friendData.friends?.includes(user.uid)) {
-          addToast('Zaten arkadaşsınız.', 'info');
+          addToast(t('chat.already_friends'), 'info');
           return;
       }
       if (friendData.friendRequests?.includes(user.uid)) {
-          addToast('Zaten istek gönderilmiş.', 'info');
+          addToast(t('room_modal.error_already_requested'), 'info');
           return;
       }
 
@@ -216,7 +218,7 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
       });
 
       setFriendSearchEmail('');
-      addToast('Arkadaşlık isteği gönderildi!', 'success');
+      addToast(t('chat.request_sent'), 'success');
   };
 
   return (
@@ -228,7 +230,7 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
                     <button
                         onClick={() => { setView('room'); setSelectedFriendId(null); }}
                         className={`p-2 rounded ${view === 'room' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}`}
-                        title="Oda Sohbeti"
+                        title={t('chat.room_chat')}
                     >
                         <Users size={20} />
                     </button>
@@ -236,7 +238,7 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
                 <button
                     onClick={() => setView('friends')}
                     className={`p-2 rounded ${view === 'friends' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}`}
-                    title="Arkadaşlar"
+                    title={t('chat.friends_chat')}
                 >
                     <User size={20} />
                 </button>
@@ -255,7 +257,7 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
                         <input
                             value={friendSearchEmail}
                             onChange={(e) => setFriendSearchEmail(e.target.value)}
-                            placeholder="Arkadaş E-posta"
+                            placeholder={t('chat.add_friend_placeholder')}
                             className="bg-slate-800 border border-slate-600 rounded p-2 text-sm flex-1 text-white"
                         />
                         <button onClick={handleAddFriend} className="bg-green-600 text-white p-2 rounded">
@@ -265,8 +267,8 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
 
                     {/* Friend List */}
                     <div className="space-y-2">
-                        <h3 className="text-xs font-bold text-slate-500 uppercase">Arkadaşlar</h3>
-                        {friends.length === 0 && <p className="text-slate-500 text-sm">Arkadaş yok.</p>}
+                        <h3 className="text-xs font-bold text-slate-500 uppercase">{t('chat.friends_chat')}</h3>
+                        {friends.length === 0 && <p className="text-slate-500 text-sm">{t('chat.no_friends_msg')}</p>}
                         {friends.map(f => (
                             <div
                                 key={f.uid}
@@ -288,7 +290,7 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
                     {view === 'friends' && selectedFriendId && (
                         <div className="bg-slate-800 p-2 flex items-center text-sm font-bold text-indigo-400 border-b border-slate-700">
                             <button onClick={() => setSelectedFriendId(null)} className="mr-2 text-slate-400 hover:text-white">{'<'}</button>
-                            {friends.find(f => f.uid === selectedFriendId)?.displayName || 'Sohbet'}
+                            {friends.find(f => f.uid === selectedFriendId)?.displayName || t('sidebar.chat')}
                         </div>
                     )}
 
@@ -350,7 +352,7 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
                                 className="flex-1 bg-slate-900 border border-slate-600 rounded-full px-4 py-2 text-white text-sm focus:border-indigo-500 outline-none min-w-0"
-                                placeholder="Mesaj yaz..."
+                                placeholder={t('chat.placeholder')}
                             />
                             <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-full flex-shrink-0">
                                 <Send size={18} />

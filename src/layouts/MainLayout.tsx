@@ -12,9 +12,11 @@ import { doc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { db, appId } from '../lib/firebase';
 import { ChatSystem } from '../components/chat/ChatSystem';
 import { ProfileSettings } from '../components/ProfileSettings';
+import { useTranslation } from 'react-i18next';
 
 export const MainLayout = () => {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [userRooms, setUserRooms] = useState<any[]>([]);
@@ -68,7 +70,7 @@ export const MainLayout = () => {
         >
             <Home size={24} />
             <div className="absolute left-14 bg-black px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                Ana Sayfa
+                {t('sidebar.home')}
             </div>
         </Link>
 
@@ -102,7 +104,7 @@ export const MainLayout = () => {
             >
                 <Plus size={24} />
                 <div className="absolute left-14 bg-black px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                    Oda Ekle
+                    {t('sidebar.add_room')}
                 </div>
             </button>
         </div>
@@ -119,7 +121,7 @@ export const MainLayout = () => {
                     <User size={20} />
                 )}
                  <div className="absolute left-14 bg-black px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                    Profilim
+                    {t('sidebar.profile')}
                 </div>
             </button>
 
@@ -129,7 +131,7 @@ export const MainLayout = () => {
             >
                 <MessageSquare size={20} />
                  <div className="absolute left-14 bg-black px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                    Sohbet
+                    {t('sidebar.chat')}
                 </div>
             </button>
 
@@ -139,7 +141,7 @@ export const MainLayout = () => {
             >
                 <LogOut size={20} />
                  <div className="absolute left-14 bg-black px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                    Çıkış Yap
+                    {t('sidebar.logout')}
                 </div>
             </button>
         </div>

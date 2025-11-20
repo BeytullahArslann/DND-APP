@@ -1,10 +1,12 @@
 import React from 'react';
 import { useNavigate, useRouteError } from 'react-router-dom';
 import { Home, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export const ErrorPage = () => {
   const error: any = useRouteError();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   console.error(error);
 
@@ -14,15 +16,15 @@ export const ErrorPage = () => {
         <div className="flex justify-center mb-4 text-amber-500">
           <AlertTriangle size={64} />
         </div>
-        <h1 className="text-3xl font-bold mb-2">Bir Hata Oluştu!</h1>
+        <h1 className="text-3xl font-bold mb-2">{t('error_page.title')}</h1>
         <p className="text-slate-400 mb-6">
-          {error?.statusText || error?.message || "Beklenmedik bir hata ile karşılaştık."}
+          {error?.statusText || error?.message || t('error_page.default_msg')}
         </p>
         <button
           onClick={() => navigate('/')}
           className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg flex items-center justify-center transition-colors"
         >
-          <Home className="mr-2" size={20} /> Ana Sayfaya Dön
+          <Home className="mr-2" size={20} /> {t('error_page.back_home')}
         </button>
       </div>
     </div>

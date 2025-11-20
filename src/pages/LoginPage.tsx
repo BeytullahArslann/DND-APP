@@ -2,12 +2,14 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { Dices, Sword, Shield, Scroll, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export const LoginPage = () => {
   const { user, signInWithGoogle, loading, error } = useAuth();
+  const { t } = useTranslation();
 
   if (loading) {
-    return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-amber-500">Yükleniyor...</div>;
+    return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-amber-500">{t('common.loading')}</div>;
   }
 
   if (user) {
@@ -30,10 +32,10 @@ export const LoginPage = () => {
         </div>
 
         <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-600 mb-2">
-          Zindan Ustası
+          {t('auth.title')}
         </h1>
         <p className="text-slate-400 mb-8">
-          Maceralarını yönet, zarlarını at ve efsaneni yaz.
+          {t('auth.subtitle')}
         </p>
 
         {error && (
@@ -65,11 +67,11 @@ export const LoginPage = () => {
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
             />
           </svg>
-          <span>Google ile Giriş Yap</span>
+          <span>{t('auth.google_signin')}</span>
         </button>
 
         <div className="mt-6 text-xs text-slate-500">
-            Giriş yaparak kullanım koşullarını kabul etmiş sayılırsınız.
+            {t('auth.terms')}
         </div>
       </div>
     </div>
