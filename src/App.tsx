@@ -6,6 +6,7 @@ import { MainLayout } from './layouts/MainLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { RoomPage } from './pages/RoomPage';
+import { ErrorPage } from './pages/ErrorPage';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -18,6 +19,7 @@ const router = createBrowserRouter([
   {
     path: '/login',
     element: <AuthLayout />,
+    errorElement: <ErrorPage />,
     children: [
       { path: '', element: <LoginPage /> }
     ]
@@ -25,12 +27,19 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <ProtectedRoute><MainLayout /></ProtectedRoute>,
+    errorElement: <ErrorPage />,
     children: [
       { path: '', element: <DashboardPage /> },
       { path: 'room/:roomId', element: <RoomPage /> }
     ]
+  },
+  {
+    path: '*',
+    element: <Navigate to="/" replace />
   }
-]);
+], {
+  basename: import.meta.env.BASE_URL
+});
 
 export default function App() {
   return (
