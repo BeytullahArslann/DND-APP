@@ -165,29 +165,33 @@ export const RoomSettings = ({ roomData, isOpen, onClose }: RoomSettingsProps) =
                         }
 
                         return (
-                        <div key={uid} className="flex items-center justify-between bg-slate-900 p-2 rounded border border-slate-700">
-                            <div className="flex items-center min-w-0 gap-2">
-                                <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center flex-shrink-0">
+                        <div key={uid} className="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-700 mb-2">
+                            <div className="flex items-center min-w-0 gap-3">
+                                <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center flex-shrink-0 border border-slate-600 overflow-hidden">
                                     {details?.photoURL ? (
-                                        <img src={details.photoURL} className="w-full h-full rounded-full object-cover"/>
+                                        <img src={details.photoURL} className="w-full h-full object-cover"/>
                                     ) : (
-                                        <span className="text-xs font-bold text-slate-500">
-                                            {details?.displayName?.substring(0,2).toUpperCase() || uid.substring(0,2)}
+                                        <span className="text-sm font-bold text-slate-400">
+                                            {details?.displayName ? details.displayName.substring(0,2).toUpperCase() : '?'}
                                         </span>
                                     )}
                                 </div>
-                                <div className="min-w-0">
-                                    <div className="text-white text-sm font-bold truncate max-w-[120px]">
-                                        {details?.displayName || uid}
-                                        {uid === roomData.ownerId && <span className="text-amber-500 ml-1">👑</span>}
+                                <div className="min-w-0 flex-1">
+                                    <div className="text-white text-sm font-bold flex items-center gap-2">
+                                        <span className="truncate max-w-[150px]">{details?.displayName || 'Yükleniyor...'}</span>
+                                        {uid === roomData.ownerId && <span className="text-xs bg-amber-900/50 text-amber-500 px-1.5 py-0.5 rounded border border-amber-900/50">👑 Sahip</span>}
                                     </div>
-                                    {dateStr && <div className="text-[10px] text-slate-500">{dateStr} tarihinde katıldı</div>}
+                                    <div className="text-[10px] text-slate-500 flex flex-col">
+                                         <span>{dateStr ? `${dateStr} tarihinde katıldı` : 'Tarih yok'}</span>
+                                         {/* Debug ID only if name missing or in dev */}
+                                         {!details?.displayName && <span className="text-[9px] opacity-50">{uid}</span>}
+                                    </div>
                                 </div>
                             </div>
 
                             {uid !== roomData.ownerId && (
-                                <button onClick={() => handleKick(uid)} className="text-red-500 hover:text-red-300 p-1" title="At">
-                                    <UserX size={16} />
+                                <button onClick={() => handleKick(uid)} className="bg-red-900/20 hover:bg-red-900/40 text-red-500 p-2 rounded-lg transition-colors" title="Oyuncuyu At">
+                                    <UserX size={18} />
                                 </button>
                             )}
                         </div>
