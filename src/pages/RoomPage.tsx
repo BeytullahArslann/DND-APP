@@ -21,6 +21,8 @@ import { db, appId } from '../lib/firebase';
 import { Dices, Scroll, Users, Crown, Eye, Settings, Link2, Share2, Copy, Mail, ChevronRight, ChevronLeft } from 'lucide-react';
 import { RoomSettings } from '../components/room/RoomSettings';
 import { Modal } from '../components/Modal';
+import { FriendSelector } from '../components/room/FriendSelector';
+import { useToast } from '../context/ToastContext';
 
 export const RoomPage = () => {
   const { roomId } = useParams();
@@ -81,9 +83,11 @@ export const RoomPage = () => {
       setTimeout(() => setCopiedLink(false), 2000);
   };
 
+  const { addToast } = useToast();
+
   const handleCopyCode = () => {
       navigator.clipboard.writeText(roomId!);
-      alert('Oda kodu kopyalandı: ' + roomId);
+      addToast('Oda kodu kopyalandı: ' + roomId, 'success');
   };
 
   const handleInviteByEmail = async (e: React.FormEvent) => {
@@ -95,7 +99,7 @@ export const RoomPage = () => {
           const snap = await getDocs(q);
 
           if (snap.empty) {
-              alert('Bu e-posta ile kayıtlı kullanıcı bulunamadı.');
+              addToast('Bu e-posta ile kayıtlı kullanıcı bulunamadı.', 'error');
               return;
           }
 
@@ -104,7 +108,7 @@ export const RoomPage = () => {
 
           // Check if already in room
           if (roomData.members?.includes(targetUserDoc.id)) {
-              alert('Kullanıcı zaten odada.');
+              addToast('Kullanıcı zaten odada.', 'info');
               return;
           }
 
@@ -120,12 +124,12 @@ export const RoomPage = () => {
               roomInvites: arrayUnion(inviteData)
           });
 
-          alert(`${inviteEmail} adresine davet gönderildi!`);
+          addToast(`${inviteEmail} adresine davet gönderildi!`, 'success');
           setInviteEmail('');
           setShowInviteModal(false);
       } catch (e) {
           console.error(e);
-          alert('Hata oluştu.');
+          addToast('Davet gönderilirken hata oluştu.', 'error');
       }
   };
 
@@ -279,6 +283,18 @@ export const RoomPage = () => {
                   Davet Gönder
               </button>
           </form>
+
+          {/* Friend List Selection */}
+          <div className="mt-6 pt-4 border-t border-slate-700">
+                <h4 className="text-sm font-bold text-slate-400 mb-2">Arkadaşlarından Seç</h4>
+                <div className="max-h-40 overflow-y-auto space-y-2">
+                     {/* We need to fetch friends here or pass them. For now, we can't easily access friends state from here without fetching.
+                         Ideally, RoomPage should fetch friends or use a context.
+                         Given the complexity, let's fetch them here simply.
+                     */}
+                     <FriendSelector onSelect={(email) => setInviteEmail(email)} />
+                </div>
+          </div>
       </Modal>
 
       <style>{`

@@ -59,7 +59,7 @@ export const MainLayout = () => {
         <div className="w-10 h-0.5 bg-slate-800 rounded-full flex-shrink-0" />
 
         {/* Room List */}
-        <div className="flex-1 flex flex-col space-y-3 overflow-y-auto w-full items-center scrollbar-hide px-2">
+        <div className="flex-1 flex flex-col space-y-3 overflow-y-auto w-full items-center scrollbar-hide px-2 overflow-x-hidden">
             {userRooms.map((room) => (
                 <Link
                     key={room.id}
