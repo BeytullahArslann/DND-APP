@@ -8,7 +8,7 @@ import {
   MessageSquare,
   User
 } from 'lucide-react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { db, appId } from '../lib/firebase';
 import { ChatSystem } from '../components/chat/ChatSystem';
 import { ProfileSettings } from '../components/ProfileSettings';
@@ -24,13 +24,17 @@ export const MainLayout = () => {
   // Fetch user's rooms
   useEffect(() => {
     if (!user) return;
-    const userRef = doc(db, 'artifacts', appId, 'users', user.uid);
-    const unsubscribe = onSnapshot(userRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setUserRooms(data.rooms || []);
-      }
+
+    const roomsQuery = query(
+      collection(db, 'artifacts', appId, 'rooms'),
+      where('members', 'array-contains', user.uid)
+    );
+
+    const unsubscribe = onSnapshot(roomsQuery, (snapshot) => {
+      const rooms = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setUserRooms(rooms);
     });
+
     return () => unsubscribe();
   }, [user]);
 

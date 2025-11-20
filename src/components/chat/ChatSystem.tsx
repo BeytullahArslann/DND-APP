@@ -314,7 +314,7 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
                     </div>
 
                     {/* Input Area */}
-                    <div className="p-3 bg-slate-800 border-t border-slate-700 relative">
+                    <div className="p-3 bg-slate-800 border-t border-slate-700 relative md:pb-3 pb-20">
                         {showEmojiPicker && (
                             <div className="absolute bottom-16 left-0 z-50">
                                 <EmojiPicker theme={Theme.DARK} onEmojiClick={handleEmojiClick} width={300} height={400} />

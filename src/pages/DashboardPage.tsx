@@ -41,6 +41,8 @@ export const DashboardPage = () => {
   const [friends, setFriends] = useState<any[]>([]);
   const [friendRequests, setFriendRequests] = useState<any[]>([]);
   const [loadingFriends, setLoadingFriends] = useState(true);
+  // Invites
+  const [invitations, setInvitations] = useState<any[]>([]);
 
   // Fetch friends and requests
   useEffect(() => {
@@ -73,11 +75,50 @@ export const DashboardPage = () => {
         } else {
             setFriends([]);
         }
+
+        // Handle Room Invites
+        setInvitations(userData.roomInvites || []);
+
         setLoadingFriends(false);
       }
     });
     return () => unsubscribe();
   }, [user]);
+
+  const handleAcceptInvite = async (invite: any) => {
+    if (!user) return;
+    try {
+        const userRef = doc(db, 'artifacts', appId, 'users', user.uid);
+        const roomRef = doc(db, 'artifacts', appId, 'rooms', invite.roomId);
+
+        // Add to room members
+        await updateDoc(roomRef, {
+            members: arrayUnion(user.uid),
+            [`roles.${user.uid}`]: 'player' // Default role
+        });
+
+        // Remove invite
+        await updateDoc(userRef, {
+            roomInvites: arrayRemove(invite)
+        });
+
+        navigate(`/room/${invite.roomId}`);
+    } catch (error) {
+        console.error("Accept invite error", error);
+    }
+  };
+
+  const handleRejectInvite = async (invite: any) => {
+    if (!user) return;
+    try {
+        const userRef = doc(db, 'artifacts', appId, 'users', user.uid);
+        await updateDoc(userRef, {
+            roomInvites: arrayRemove(invite)
+        });
+    } catch (error) {
+        console.error("Reject invite error", error);
+    }
+  };
 
   const handleAcceptFriend = async (requesterId: string) => {
       if (!user) return;
@@ -396,12 +437,47 @@ export const DashboardPage = () => {
                 </div>
             </div>
 
-            {/* Room Invites (Placeholder for now) */}
+            {/* Room Invites */}
             <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 md:col-span-2">
-                <h2 className="text-xl font-bold text-white mb-4 flex items-center"><DoorOpen className="mr-2"/> Bekleyen Oyun Davetleri</h2>
-                <div className="text-slate-500 text-center py-8">
-                    Bekleyen davet yok.
-                </div>
+                <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+                    <DoorOpen className="mr-2"/> Bekleyen Oyun Davetleri
+                    {invitations.length > 0 && (
+                        <span className="ml-2 bg-indigo-500 text-white text-xs px-2 py-0.5 rounded-full">{invitations.length}</span>
+                    )}
+                </h2>
+
+                {invitations.length === 0 ? (
+                     <div className="text-slate-500 text-center py-8">Bekleyen davet yok.</div>
+                ) : (
+                    <div className="space-y-3">
+                        {invitations.map((invite, idx) => (
+                            <div key={idx} className="flex items-center justify-between bg-slate-700/50 p-4 rounded-lg border border-slate-600">
+                                <div>
+                                    <div className="font-bold text-lg text-white">{invite.roomName}</div>
+                                    <div className="text-xs text-slate-400">
+                                        Davet eden: <span className="text-amber-500">{invite.inviterName}</span>
+                                        <span className="mx-1">•</span>
+                                        {new Date(invite.timestamp).toLocaleDateString()}
+                                    </div>
+                                </div>
+                                <div className="flex space-x-2">
+                                    <button
+                                        onClick={() => handleAcceptInvite(invite)}
+                                        className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white font-bold text-sm flex items-center"
+                                    >
+                                        <Check size={16} className="mr-1"/> Katıl
+                                    </button>
+                                    <button
+                                        onClick={() => handleRejectInvite(invite)}
+                                        className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white font-bold text-sm flex items-center"
+                                    >
+                                        <X size={16} className="mr-1"/> Reddet
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
         )}
