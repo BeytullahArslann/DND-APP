@@ -60,14 +60,7 @@ const demoFirebaseConfig: FirebaseOptions = {
   appId: '1:demo:web:demo'
 };
 
-type FirebaseConfigResult = {
-  config: FirebaseOptions;
-  issue?: string;
-};
-
-const requiredFirebaseKeys: (keyof FirebaseOptions)[] = ['apiKey', 'authDomain', 'projectId', 'appId'];
-
-const getFirebaseConfig = (): FirebaseConfigResult => {
+const getFirebaseConfig = (): FirebaseOptions => {
   const rawConfig = import.meta.env.VITE_FIREBASE_CONFIG;
 
   if (rawConfig) {
@@ -75,33 +68,17 @@ const getFirebaseConfig = (): FirebaseConfigResult => {
       const parsedConfig = JSON.parse(rawConfig);
 
       if (parsedConfig && typeof parsedConfig === 'object') {
-        const missingKeys = requiredFirebaseKeys.filter((key) => !parsedConfig[key] || typeof parsedConfig[key] !== 'string' || parsedConfig[key].trim() === '');
-
-        if (missingKeys.length === 0) {
-          return { config: parsedConfig as FirebaseOptions };
-        }
-
-        return {
-          config: demoFirebaseConfig,
-          issue: `Eksik Firebase ayarları: ${missingKeys.join(', ')}`
-        };
+        return parsedConfig as FirebaseOptions;
       }
     } catch (error) {
       console.warn('VITE_FIREBASE_CONFIG JSON parse failed, falling back to demo config.', error);
-      return {
-        config: demoFirebaseConfig,
-        issue: 'VITE_FIREBASE_CONFIG değeri parse edilemedi'
-      };
     }
   }
 
-  return {
-    config: demoFirebaseConfig,
-    issue: 'VITE_FIREBASE_CONFIG tanımlı değil'
-  };
+  return demoFirebaseConfig;
 };
 
-const { config: firebaseConfig, issue: firebaseConfigIssue } = getFirebaseConfig();
+const firebaseConfig = getFirebaseConfig();
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
