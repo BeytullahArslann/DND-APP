@@ -124,9 +124,17 @@ export const RoomSettings = ({ roomData, isOpen, onClose }: RoomSettingsProps) =
       setLoading(false);
   };
 
+  const formattedCreatedAt = roomData.createdAt
+      ? (roomData.createdAt.toDate ? roomData.createdAt.toDate() : new Date(roomData.createdAt)).toLocaleDateString()
+      : "Bilinmiyor";
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Oda Ayarları">
         <div className="space-y-6">
+             <div className="text-xs text-slate-500 border-b border-slate-700 pb-2">
+                 Oluşturulma Tarihi: <span className="text-slate-300">{formattedCreatedAt}</span>
+             </div>
+
             {/* Pending Requests */}
             <div>
                 <h4 className="text-sm font-bold text-slate-400 uppercase mb-2">Bekleyen İstekler</h4>
@@ -156,7 +164,13 @@ export const RoomSettings = ({ roomData, isOpen, onClose }: RoomSettingsProps) =
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                     {roomData.members?.map((uid: string) => {
                         const details = memberDetails[uid];
-                        const joinDate = roomData.memberJoinedAt?.[uid];
+                        let joinDate = roomData.memberJoinedAt?.[uid];
+
+                        // Fallback for owner if no specific join date
+                        if (!joinDate && uid === roomData.ownerId && roomData.createdAt) {
+                            joinDate = roomData.createdAt;
+                        }
+
                         let dateStr = "";
                         if (joinDate) {
                              // Handle Firestore Timestamp or basic number
