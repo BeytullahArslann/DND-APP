@@ -23,6 +23,19 @@ Bu proje, Firebase destekli gerçek zamanlı zar atma ve karakter yönetimi öze
 - `VITE_APP_ID`: Firestore içindeki kayıtların gruplanacağı benzersiz kimlik.
 - `VITE_INITIAL_AUTH_TOKEN`: (Opsiyonel) Sunucu tarafından sağlanan özel giriş token'ı.
 
+### VITE_INITIAL_AUTH_TOKEN nasıl alınır?
+- Bu değer, Firebase **Admin SDK** ile üretilen bir **custom token** olmalıdır. İstemci bu token'ı alır almaz `signInWithCustomToken` ile oturum açar; boş bırakılırsa anonim giriş kullanılır.
+- Bir kezlik oturum açma token'ı üretmek için sunucu tarafında örnek Node.js kodu:
+  ```js
+  import { initializeApp, applicationDefault } from 'firebase-admin/app';
+  import { getAuth } from 'firebase-admin/auth';
+
+  initializeApp({ credential: applicationDefault() });
+  const customToken = await getAuth().createCustomToken('kullanici-id');
+  console.log(customToken); // Çıktıyı VITE_INITIAL_AUTH_TOKEN olarak kullanın
+  ```
+- İsteğe bağlı olarak Cloud Functions ya da kendi backend'inizde bu token'ı üretip, Pages build'i sırasında `VITE_INITIAL_AUTH_TOKEN` olarak gizli değişkene set edebilirsiniz.
+
 ## Üretim
 ```
 npm run build
