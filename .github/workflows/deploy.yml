@@ -33,6 +33,8 @@ jobs:
       - name: Build
         env:
           BASE_PATH: "/${{ github.event.repository.name }}/"
+          VITE_FIREBASE_CONFIG: ${{ secrets.VITE_FIREBASE_CONFIG || vars.VITE_FIREBASE_CONFIG }}
+          VITE_APP_ID: ${{ vars.VITE_APP_ID }}
         run: npm run build
 
       - name: Upload artifact
