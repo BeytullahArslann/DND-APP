@@ -36,7 +36,6 @@ GitHub Actions, projeyi otomatik olarak derleyip GitHub Pages üzerinde yayınla
 2. Varsayılan `main` branch'ine push ettiğinizde `.github/workflows/deploy.yml` çalışır ve `dist` çıktısını Pages'a gönderir.
 3. Proje repo adı değişirse, GitHub Actions derleme adımındaki `BASE_PATH` ortam değişkeni otomatik olarak güncellenerek Vite için doğru alt yol kullanılır.
 4. İsteğe bağlı olarak workflow'u manuel tetiklemek için **Actions** sekmesinden `Build and Deploy` iş akışını `Run workflow` ile çalıştırabilirsiniz.
-5. İlk dağıtımda 404 hatası almamak için Pages'in etkin olduğundan emin olun; gerekirse **Settings → Pages** ekranında `GitHub Actions` kaynağını yeniden kaydedip iş akışını tekrar çalıştırın.
 
 ## Ekstra Özellikler
 - Oda kodu, URL üzerinden otomatik doldurulur (ör. `?room=masa1`).
