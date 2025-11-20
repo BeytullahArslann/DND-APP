@@ -1,10 +1,10 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Dices, Sword, Shield, Scroll } from 'lucide-react';
+import { Dices, Sword, Shield, Scroll, AlertCircle } from 'lucide-react';
 
 export const LoginPage = () => {
-  const { user, signInWithGoogle, loading } = useAuth();
+  const { user, signInWithGoogle, loading, error } = useAuth();
 
   if (loading) {
     return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-amber-500">Yükleniyor...</div>;
@@ -35,6 +35,13 @@ export const LoginPage = () => {
         <p className="text-slate-400 mb-8">
           Maceralarını yönet, zarlarını at ve efsaneni yaz.
         </p>
+
+        {error && (
+          <div className="mb-6 bg-red-900/20 border border-red-700 text-red-200 p-3 rounded-lg text-sm flex items-start text-left">
+            <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
 
         <button
           onClick={signInWithGoogle}
