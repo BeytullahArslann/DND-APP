@@ -40,10 +40,22 @@ export const MainLayout = () => {
   // Determine if we are in a room to pass roomId to chat
   const currentRoomId = location.pathname.startsWith('/room/') ? location.pathname.split('/')[2] : undefined;
 
+  // Check if mobile view
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+      const handleResize = () => setIsMobile(window.innerWidth < 768);
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
-    <div className="flex h-screen bg-slate-900 text-slate-100 overflow-hidden relative">
-      {/* Sidebar - Room Switcher */}
-      <div className="w-20 flex flex-col items-center py-4 bg-slate-950 border-r border-slate-800 z-20 h-full space-y-4">
+    <div className="flex h-screen w-screen bg-slate-900 text-slate-100 overflow-hidden relative">
+      {/* Sidebar - Room Switcher (Hidden on mobile unless specifically needed, but here we'll move it to bottom or make it a drawer if complex. For now, hiding on mobile and adding a simple mobile nav if needed, or just hiding and letting the user navigate differently) */}
+      {/* We will use a conditional rendering for Mobile: Bottom Bar vs Sidebar */}
+
+      {!isMobile ? (
+      <div className="w-20 flex flex-col items-center py-4 bg-slate-950 border-r border-slate-800 z-20 h-full space-y-4 pt-safe-top">
         {/* Home / Dashboard */}
         <Link
             to="/"
@@ -92,7 +104,7 @@ export const MainLayout = () => {
         </div>
 
         {/* User / Settings */}
-        <div className="mt-auto flex flex-col space-y-3 flex-shrink-0">
+        <div className="mt-auto flex flex-col space-y-3 flex-shrink-0 pb-safe-bottom">
              <button
                 onClick={() => setShowProfile(true)}
                 className="w-12 h-12 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 hover:text-white transition-all duration-200 group relative"
@@ -128,9 +140,42 @@ export const MainLayout = () => {
             </button>
         </div>
       </div>
+      ) : (
+        // Mobile Bottom Navigation
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-slate-950 border-t border-slate-800 flex items-center justify-around px-4 z-50 pb-safe-bottom">
+            <Link to="/" className={`p-2 rounded-xl ${isActive('/') ? 'text-amber-500' : 'text-slate-400'}`}>
+                <Home size={24} />
+            </Link>
+
+            <button onClick={() => setShowChat(!showChat)} className={`p-2 rounded-xl ${showChat ? 'text-indigo-500' : 'text-slate-400'}`}>
+                <MessageSquare size={24} />
+            </button>
+
+             {/* Simple Room Switcher Trigger for Mobile - Maybe a drawer or just showing current room icon if active */}
+            {currentRoomId && (
+                <Link to={`/room/${currentRoomId}`} className="p-2 rounded-xl text-indigo-500 border border-indigo-500/50 bg-indigo-500/10">
+                    <div className="w-6 h-6 flex items-center justify-center font-bold text-xs">
+                        RM
+                    </div>
+                </Link>
+            )}
+
+            <button onClick={() => setShowProfile(true)} className="p-2 rounded-xl">
+                {user?.photoURL ? (
+                    <img src={user.photoURL} alt="Profile" className="w-6 h-6 rounded-full object-cover" />
+                ) : (
+                     <User size={24} className="text-slate-400" />
+                )}
+            </button>
+
+             <button onClick={logout} className="p-2 rounded-xl text-red-500">
+                <LogOut size={24} />
+            </button>
+        </div>
+      )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-slate-900 relative">
+      <div className={`flex-1 flex flex-col min-w-0 bg-slate-900 relative ${isMobile ? 'pb-16' : ''} pt-safe-top pl-safe-left pr-safe-right`}>
         <Outlet />
       </div>
 
