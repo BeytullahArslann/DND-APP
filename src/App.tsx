@@ -60,6 +60,8 @@ const demoFirebaseConfig: FirebaseOptions = {
   appId: '1:demo:web:demo'
 };
 
+let firebaseConfigIssue: string | undefined;
+
 const getFirebaseConfig = (): FirebaseOptions => {
   const rawConfig = import.meta.env.VITE_FIREBASE_CONFIG;
 
@@ -71,8 +73,11 @@ const getFirebaseConfig = (): FirebaseOptions => {
         return parsedConfig as FirebaseOptions;
       }
     } catch (error) {
+      firebaseConfigIssue = 'VITE_FIREBASE_CONFIG JSON parse failed: ' + (error instanceof Error ? error.message : String(error));
       console.warn('VITE_FIREBASE_CONFIG JSON parse failed, falling back to demo config.', error);
     }
+  } else {
+      firebaseConfigIssue = 'VITE_FIREBASE_CONFIG environment variable is missing.';
   }
 
   return demoFirebaseConfig;
