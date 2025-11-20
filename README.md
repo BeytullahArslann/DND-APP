@@ -29,6 +29,14 @@ npm run build
 npm run preview
 ```
 
+## GitHub Pages ile Ücretsiz Barındırma
+GitHub Actions, projeyi otomatik olarak derleyip GitHub Pages üzerinde yayınlamak için yapılandırıldı.
+
+1. Depodaki **Settings → Pages** bölümünden kaynak olarak `GitHub Actions` seçin.
+2. Varsayılan `main` branch'ine push ettiğinizde `.github/workflows/deploy.yml` çalışır ve `dist` çıktısını Pages'a gönderir.
+3. Proje repo adı değişirse, GitHub Actions derleme adımındaki `BASE_PATH` ortam değişkeni otomatik olarak güncellenerek Vite için doğru alt yol kullanılır.
+4. İsteğe bağlı olarak workflow'u manuel tetiklemek için **Actions** sekmesinden `Build and Deploy` iş akışını `Run workflow` ile çalıştırabilirsiniz.
+
 ## Ekstra Özellikler
 - Oda kodu, URL üzerinden otomatik doldurulur (ör. `?room=masa1`).
 - Paylaşım butonu ile oda linkini tek tıkla panoya kopyalayabilirsiniz.
