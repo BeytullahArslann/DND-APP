@@ -27,19 +27,12 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Setup Pages
-        id: pages
-        uses: actions/configure-pages@v5
-
       - name: Install dependencies
         run: npm install
 
       - name: Build
         env:
           BASE_PATH: "/${{ github.event.repository.name }}/"
-          VITE_FIREBASE_CONFIG: ${{ secrets.VITE_FIREBASE_CONFIG }}
-          VITE_APP_ID: ${{ secrets.VITE_APP_ID }}
-          VITE_INITIAL_AUTH_TOKEN: ${{ secrets.VITE_INITIAL_AUTH_TOKEN }}
         run: npm run build
 
       - name: Upload artifact
