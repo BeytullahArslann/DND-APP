@@ -39,6 +39,7 @@ import {
   X,
   User,
   Feather,
+  Link2,
   CheckSquare,
   Lock,
   Eye,
@@ -49,11 +50,24 @@ import {
 } from 'lucide-react';
 
 // --- Firebase Kurulumu ---
-const firebaseConfig = JSON.parse(__firebase_config);
+const firebaseConfigString =
+  import.meta.env.VITE_FIREBASE_CONFIG ||
+  JSON.stringify({
+    apiKey: 'demo',
+    authDomain: 'demo.firebaseapp.com',
+    projectId: 'demo',
+    storageBucket: 'demo.appspot.com',
+    messagingSenderId: '000000000000',
+    appId: '1:demo:web:demo'
+  });
+
+const firebaseConfig = JSON.parse(firebaseConfigString);
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const appId = import.meta.env.VITE_APP_ID ?? 'default-app-id';
+const initialAuthToken = import.meta.env.VITE_INITIAL_AUTH_TOKEN;
+const usingDemoConfig = !import.meta.env.VITE_FIREBASE_CONFIG;
 
 // --- 5eTürkçe (Kanguen) Kural Setleri ---
 
@@ -233,7 +247,10 @@ const parseDamage = (damageStr) => {
 
 const Lobby = ({ onJoin }) => {
   const [name, setName] = useState('');
-  const [room, setRoom] = useState('');
+  const [room, setRoom] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    return new URLSearchParams(window.location.search).get('room') || '';
+  });
   const [role, setRole] = useState('player');
 
   const handleSubmit = (e) => {
@@ -1082,11 +1099,21 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dice');
   const [role, setRole] = useState('player'); // Varsayılan
   const [selectedPlayerId, setSelectedPlayerId] = useState(null); // DM için seçili oyuncu
+  const [copiedShareLink, setCopiedShareLink] = useState(false);
+
+  const shareLink = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    const url = new URL(window.location.href);
+    if (roomCode) {
+      url.searchParams.set('room', roomCode);
+    }
+    return url.toString();
+  }, [roomCode]);
 
   useEffect(() => {
     const initAuth = async () => {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-            await signInWithCustomToken(auth, __initial_auth_token);
+        if (initialAuthToken) {
+            await signInWithCustomToken(auth, initialAuthToken);
         } else {
             await signInAnonymously(auth);
         }
@@ -1115,6 +1142,17 @@ export default function App() {
       setActiveTab('char'); // Seçince direkt kağıda git
   };
 
+  const handleCopyShareLink = async () => {
+    if (!shareLink) return;
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setCopiedShareLink(true);
+      setTimeout(() => setCopiedShareLink(false), 1500);
+    } catch (error) {
+      window.prompt('Oda linkini kopyala', shareLink);
+    }
+  };
+
   if (!user) return <div className="flex items-center justify-center h-screen bg-slate-900 text-amber-500">Büyü hazırlanıyor...</div>;
   
   if (!joined) return <Lobby onJoin={handleJoin} />;
@@ -1122,11 +1160,24 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen bg-slate-900 text-slate-100 font-sans overflow-hidden">
       <header className="bg-slate-800 p-4 shadow-md border-b border-slate-700 flex justify-between items-center z-10">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
           <span className="font-bold text-amber-500">Oda: {roomCode}</span>
+          {usingDemoConfig && (
+            <span className="text-xs px-2 py-1 bg-amber-900/40 border border-amber-700 text-amber-200 rounded-full">
+              Demo Firebase
+            </span>
+          )}
         </div>
-        <div className="flex items-center space-x-2 text-sm text-slate-400">
+        <div className="flex items-center space-x-3 text-sm text-slate-400">
+            <button
+              onClick={handleCopyShareLink}
+              disabled={!roomCode}
+              className={`flex items-center space-x-1 px-3 py-1 rounded-lg border transition-colors ${roomCode ? 'border-amber-700 text-amber-300 hover:bg-amber-900/30' : 'border-slate-700 text-slate-600 cursor-not-allowed'}`}
+            >
+              <Link2 className="w-4 h-4" />
+              <span>{copiedShareLink ? 'Kopyalandı!' : 'Odayı Paylaş'}</span>
+            </button>
             {role === 'dm' && <Crown className="w-4 h-4 text-amber-400" />}
             {role === 'spectator' && <Eye className="w-4 h-4 text-blue-400" />}
             <span>{user.displayName}</span>
