@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { initializeApp } from 'firebase/app';
+import { FirebaseOptions, initializeApp } from 'firebase/app';
 import {
   getAuth,
   signInAnonymously,
@@ -51,24 +51,40 @@ import {
 import { calculateCasterLevel, formatModifier, getModifier, getProficiencyBonus, parseDamage } from './utils/stats.js';
 
 // --- Firebase Kurulumu ---
-const firebaseConfigString =
-  import.meta.env.VITE_FIREBASE_CONFIG ||
-  JSON.stringify({
-    apiKey: 'demo',
-    authDomain: 'demo.firebaseapp.com',
-    projectId: 'demo',
-    storageBucket: 'demo.appspot.com',
-    messagingSenderId: '000000000000',
-    appId: '1:demo:web:demo'
-  });
+const demoFirebaseConfig: FirebaseOptions = {
+  apiKey: 'demo',
+  authDomain: 'demo.firebaseapp.com',
+  projectId: 'demo',
+  storageBucket: 'demo.appspot.com',
+  messagingSenderId: '000000000000',
+  appId: '1:demo:web:demo'
+};
 
-const firebaseConfig = JSON.parse(firebaseConfigString);
+const getFirebaseConfig = (): FirebaseOptions => {
+  const rawConfig = import.meta.env.VITE_FIREBASE_CONFIG;
+
+  if (rawConfig) {
+    try {
+      const parsedConfig = JSON.parse(rawConfig);
+
+      if (parsedConfig && typeof parsedConfig === 'object') {
+        return parsedConfig as FirebaseOptions;
+      }
+    } catch (error) {
+      console.warn('VITE_FIREBASE_CONFIG JSON parse failed, falling back to demo config.', error);
+    }
+  }
+
+  return demoFirebaseConfig;
+};
+
+const firebaseConfig = getFirebaseConfig();
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = import.meta.env.VITE_APP_ID ?? 'default-app-id';
+const appId = import.meta.env.VITE_APP_ID?.trim() || 'default';
 const initialAuthToken = import.meta.env.VITE_INITIAL_AUTH_TOKEN;
-const usingDemoConfig = !import.meta.env.VITE_FIREBASE_CONFIG;
+const usingDemoConfig = firebaseConfig === demoFirebaseConfig;
 
 // --- 5eTürkçe (Kanguen) Kural Setleri ---
 
