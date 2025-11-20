@@ -19,6 +19,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, appId, storage } from '../../lib/firebase';
 import { Send, UserPlus, User, MessageSquare, X, Users, Smile, Image as ImageIcon, Loader2 } from 'lucide-react';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
+import { useToast } from '../../context/ToastContext';
 
 interface Message {
   id: string;
@@ -37,6 +38,7 @@ interface ChatSystemProps {
 
 export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [friends, setFriends] = useState<any[]>([]);
@@ -159,7 +161,7 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
 
       const file = e.target.files[0];
       if (file.size > 5 * 1024 * 1024) {
-          alert('Dosya boyutu çok büyük (Max 5MB).');
+          addToast('Dosya boyutu çok büyük (Max 5MB).', 'error');
           return;
       }
 
@@ -171,7 +173,7 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
           await handleSendMessage(undefined, url);
       } catch (error) {
           console.error("Upload failed", error);
-          alert("Yükleme başarısız.");
+          addToast("Yükleme başarısız.", 'error');
       }
       setIsUploading(false);
   };
@@ -183,7 +185,7 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
-          alert('Kullanıcı bulunamadı.');
+          addToast('Kullanıcı bulunamadı.', 'error');
           return;
       }
 
@@ -191,7 +193,7 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
       const friendId = friendDoc.id;
 
       if (friendId === user.uid) {
-          alert('Kendini ekleyemezsin.');
+          addToast('Kendini ekleyemezsin.', 'info');
           return;
       }
 
@@ -201,11 +203,11 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
       // Check if already friends or requested (simplified)
       const friendData = friendDoc.data();
       if (friendData.friends?.includes(user.uid)) {
-          alert('Zaten arkadaşsınız.');
+          addToast('Zaten arkadaşsınız.', 'info');
           return;
       }
       if (friendData.friendRequests?.includes(user.uid)) {
-          alert('Zaten istek gönderilmiş.');
+          addToast('Zaten istek gönderilmiş.', 'info');
           return;
       }
 
@@ -214,7 +216,7 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
       });
 
       setFriendSearchEmail('');
-      alert('Arkadaşlık isteği gönderildi!');
+      addToast('Arkadaşlık isteği gönderildi!', 'success');
   };
 
   return (
@@ -347,10 +349,10 @@ export const ChatSystem = ({ roomId, isOverlay, onClose }: ChatSystemProps) => {
                             <input
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
-                                className="flex-1 bg-slate-900 border border-slate-600 rounded-full px-4 py-2 text-white text-sm focus:border-indigo-500 outline-none"
+                                className="flex-1 bg-slate-900 border border-slate-600 rounded-full px-4 py-2 text-white text-sm focus:border-indigo-500 outline-none min-w-0"
                                 placeholder="Mesaj yaz..."
                             />
-                            <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-full">
+                            <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-full flex-shrink-0">
                                 <Send size={18} />
                             </button>
                         </form>
