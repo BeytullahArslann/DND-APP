@@ -1088,12 +1088,12 @@ const PartyView = ({ roomCode, currentUserUid, role, onSelectPlayer, selectedPla
 
 // 5. ANA UYGULAMA
 export default function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
   const [joined, setJoined] = useState(false);
-  const [roomCode, setRoomCode] = useState(null);
+  const [roomCode, setRoomCode] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('dice');
   const [role, setRole] = useState('player'); // Varsayılan
-  const [selectedPlayerId, setSelectedPlayerId] = useState(null); // DM için seçili oyuncu
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null); // DM için seçili oyuncu
   const [copiedShareLink, setCopiedShareLink] = useState(false);
   const firebaseUnavailableMessage = firebaseConfigIssue || 'Firebase yapılandırması doğrulanamadı.';
 
@@ -1135,7 +1135,14 @@ export default function App() {
 
   const handleJoin = (userName, room, selectedRole) => {
     if (user) {
-      user.displayName = userName;
+      // Fix for read-only property if needed, otherwise this might fail if user object is frozen
+      try {
+          // @ts-ignore
+          user.displayName = userName;
+      } catch (e) {
+          Object.defineProperty(user, 'displayName', { value: userName, writable: true });
+      }
+
       setRoomCode(room);
       setRole(selectedRole);
       setJoined(true);
@@ -1147,7 +1154,7 @@ export default function App() {
     }
   };
 
-  const handleDMSelectPlayer = (uid) => {
+  const handleDMSelectPlayer = (uid: string) => {
       setSelectedPlayerId(uid);
       setActiveTab('char'); // Seçince direkt kağıda git
   };
