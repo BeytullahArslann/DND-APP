@@ -5,7 +5,8 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, appId } from '../lib/firebase';
 import { updateProfile } from 'firebase/auth';
-import { User, Upload, Loader2 } from 'lucide-react';
+import { User, Upload, Loader2, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface ProfileSettingsProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface ProfileSettingsProps {
 
 export const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
   const { user } = useAuth();
+  const { t, i18n } = useTranslation();
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [bio, setBio] = useState(''); // Would need to fetch current bio from Firestore first
   const [uploading, setUploading] = useState(false);
@@ -51,7 +53,7 @@ export const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
 
       const file = e.target.files[0];
       if (file.size > 5 * 1024 * 1024) {
-          alert("Dosya boyutu 5MB'dan küçük olmalıdır.");
+          alert(t('profile.size_error'));
           return;
       }
 
@@ -71,13 +73,13 @@ export const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
           setUploading(false);
       } catch (error) {
           console.error("Upload error:", error);
-          alert("Fotoğraf yüklenirken hata oluştu. (Depolama ayarlarını kontrol edin)");
+          alert(t('profile.upload_error'));
           setUploading(false);
       }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Profil Düzenle">
+    <Modal isOpen={isOpen} onClose={onClose} title={t('profile.title')}>
         <form onSubmit={handleSave} className="space-y-6">
             <div className="flex flex-col items-center space-y-4">
                 <div className="relative w-24 h-24">
@@ -105,11 +107,11 @@ export const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
                         onChange={handleFileChange}
                     />
                 </div>
-                <p className="text-xs text-slate-400">Max 5MB (JPG, PNG, GIF)</p>
+                <p className="text-xs text-slate-400">{t('profile.max_size')}</p>
             </div>
 
             <div>
-                <label className="block text-sm font-bold text-slate-400 mb-1">Kullanıcı Adı</label>
+                <label className="block text-sm font-bold text-slate-400 mb-1">{t('profile.username')}</label>
                 <input
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
@@ -119,13 +121,32 @@ export const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
             </div>
 
             <div>
-                <label className="block text-sm font-bold text-slate-400 mb-1">Hakkında</label>
+                <label className="block text-sm font-bold text-slate-400 mb-1">{t('profile.bio')}</label>
                 <textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-amber-500 outline-none h-24 resize-none"
-                    placeholder="Kendinizden bahsedin..."
+                    placeholder={t('profile.bio_placeholder')}
                 />
+            </div>
+
+            <div>
+                <label className="block text-sm font-bold text-slate-400 mb-1">{t('profile.language')}</label>
+                <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
+                    <select
+                        value={i18n.language}
+                        onChange={(e) => i18n.changeLanguage(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-600 rounded p-2 pl-10 text-white focus:border-amber-500 outline-none appearance-none"
+                    >
+                        <option value="tr">Türkçe</option>
+                        <option value="en">English</option>
+                        <option value="de">Deutsch</option>
+                        <option value="fr">Français</option>
+                        <option value="es">Español</option>
+                        <option value="it">Italiano</option>
+                    </select>
+                </div>
             </div>
 
             <button
@@ -135,7 +156,7 @@ export const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded flex items-center justify-center disabled:opacity-50"
             >
                 {uploading ? <Loader2 className="animate-spin mr-2"/> : null}
-                Kaydet
+                {t('common.save')}
             </button>
         </form>
     </Modal>

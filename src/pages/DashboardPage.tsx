@@ -19,9 +19,11 @@ import {
 import { db, appId } from '../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Lock, Users, DoorOpen, LogIn, UserPlus, Check, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export const DashboardPage = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
@@ -247,7 +249,7 @@ export const DashboardPage = () => {
 
           if (roomData.hasPassword) {
               if (roomData.password !== joinRoomPassword) {
-                  setJoinError("Hatalı şifre.");
+                  setJoinError(t('room_modal.error_wrong_password'));
                   return;
               }
               // Password correct -> Join immediately
@@ -267,7 +269,7 @@ export const DashboardPage = () => {
               // Check if request already sent
               const pending = roomData.pendingRequests || [];
               if (pending.some((p: any) => p.uid === user.uid)) {
-                  setJoinError("Zaten istek gönderilmiş.");
+                  setJoinError(t('room_modal.error_already_requested'));
                   return;
               }
 
@@ -279,13 +281,13 @@ export const DashboardPage = () => {
                       timestamp: Date.now()
                   })
               });
-              setJoinError("Katılım isteği gönderildi. Oda sahibi onayladığında girebileceksiniz.");
+              setJoinError(t('room_modal.success_request'));
               setTimeout(() => setIsJoinModalOpen(false), 2000);
           }
 
       } catch (error) {
           console.error("Join error:", error);
-          setJoinError("Bir hata oluştu.");
+          setJoinError(t('common.error'));
       }
   };
 
@@ -294,28 +296,28 @@ export const DashboardPage = () => {
       <div className="max-w-4xl mx-auto">
         <header className="mb-8 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">{showHub ? 'Oyun Merkezi (Hub)' : 'Lobi'}</h1>
-            <p className="text-slate-400">{showHub ? 'Tüm açık oyunları keşfet.' : 'Yeni bir maceraya başla veya mevcut birine katıl.'}</p>
+            <h1 className="text-3xl font-bold text-white mb-2">{showHub ? t('dashboard.hub') : t('dashboard.lobby')}</h1>
+            <p className="text-slate-400">{showHub ? t('dashboard.hub_desc') : t('dashboard.lobby_desc')}</p>
           </div>
           <div className="flex gap-2 md:gap-4 flex-wrap">
              <button
                 onClick={() => setShowHub(!showHub)}
                 className={`px-6 py-3 rounded-lg font-bold flex items-center border transition-colors ${showHub ? 'bg-slate-700 border-slate-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'}`}
             >
-                <DoorOpen className="mr-2 w-5 h-5" /> {showHub ? 'Lobime Dön' : 'Tüm Oyunlar'}
+                <DoorOpen className="mr-2 w-5 h-5" /> {showHub ? t('dashboard.my_lobby') : t('dashboard.all_games')}
             </button>
 
             <button
                 onClick={() => setIsJoinModalOpen(true)}
                 className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-lg font-bold flex items-center border border-slate-700 transition-colors"
             >
-                <Search className="mr-2 w-5 h-5" /> Kod İle Katıl
+                <Search className="mr-2 w-5 h-5" /> {t('dashboard.join_code')}
             </button>
             <button
                 onClick={() => setIsCreateModalOpen(true)}
                 className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-lg font-bold flex items-center shadow-lg transition-colors"
             >
-                <Plus className="mr-2 w-5 h-5" /> Yeni Oda
+                <Plus className="mr-2 w-5 h-5" /> {t('dashboard.new_room')}
             </button>
           </div>
         </header>
@@ -328,7 +330,7 @@ export const DashboardPage = () => {
                      <input
                         value={roomSearch}
                         onChange={(e) => setRoomSearch(e.target.value)}
-                        placeholder="Oda adı ara..."
+                        placeholder={t('dashboard.search_room')}
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white focus:border-indigo-500 outline-none"
                      />
                  </div>
@@ -336,9 +338,9 @@ export const DashboardPage = () => {
                  {/* Room List Grid */}
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                      {loadingRooms ? (
-                         <div className="col-span-full text-center text-slate-500 py-8">Odalar yükleniyor...</div>
+                         <div className="col-span-full text-center text-slate-500 py-8">{t('common.loading')}</div>
                      ) : filteredRooms.length === 0 ? (
-                         <div className="col-span-full text-center text-slate-500 py-8">Oda bulunamadı.</div>
+                         <div className="col-span-full text-center text-slate-500 py-8">{t('dashboard.no_rooms')}</div>
                      ) : (
                          filteredRooms.map(room => (
                              <div key={room.id} className="bg-slate-800 border border-slate-700 rounded-xl p-4 hover:border-indigo-500 transition-colors relative group">
@@ -350,7 +352,7 @@ export const DashboardPage = () => {
                                  </div>
                                  <h3 className="font-bold text-white truncate mb-1">{room.name}</h3>
                                  <div className="text-xs text-slate-500 mb-4">
-                                     {room.members?.length || 1} Oyuncu
+                                     {room.members?.length || 1} {t('dashboard.players')}
                                  </div>
                                  <button
                                     onClick={() => {
@@ -359,7 +361,7 @@ export const DashboardPage = () => {
                                     }}
                                     className="w-full bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white py-2 rounded font-bold text-sm transition-all"
                                  >
-                                     Katıl
+                                     {t('dashboard.join')}
                                  </button>
                              </div>
                          ))
@@ -371,14 +373,14 @@ export const DashboardPage = () => {
             {/* Friend Requests */}
             <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
                 <h2 className="text-xl font-bold text-white mb-4 flex items-center">
-                    <UserPlus className="mr-2"/> Arkadaş İstekleri
+                    <UserPlus className="mr-2"/> {t('dashboard.friend_requests')}
                     {friendRequests.length > 0 && (
                         <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{friendRequests.length}</span>
                     )}
                 </h2>
                 <div className="space-y-2">
                     {friendRequests.length === 0 ? (
-                         <div className="text-slate-500 text-center py-4">Bekleyen istek yok.</div>
+                         <div className="text-slate-500 text-center py-4">{t('dashboard.no_requests')}</div>
                     ) : (
                         friendRequests.map(req => (
                             <div key={req.uid} className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg">
@@ -410,12 +412,12 @@ export const DashboardPage = () => {
 
             {/* Friend List */}
             <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
-                <h2 className="text-xl font-bold text-white mb-4 flex items-center"><Users className="mr-2"/> Arkadaşların</h2>
+                <h2 className="text-xl font-bold text-white mb-4 flex items-center"><Users className="mr-2"/> {t('dashboard.friends')}</h2>
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
                     {loadingFriends ? (
-                        <div className="text-slate-500 text-center py-4">Yükleniyor...</div>
+                        <div className="text-slate-500 text-center py-4">{t('common.loading')}</div>
                     ) : friends.length === 0 ? (
-                        <div className="text-slate-500 text-center py-4">Henüz arkadaş eklemedin.</div>
+                        <div className="text-slate-500 text-center py-4">{t('dashboard.no_friends')}</div>
                     ) : (
                         friends.map(f => (
                              <div key={f.uid} className="flex items-center p-3 bg-slate-700/30 rounded-lg">
@@ -442,14 +444,14 @@ export const DashboardPage = () => {
             {/* Room Invites */}
             <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 md:col-span-2">
                 <h2 className="text-xl font-bold text-white mb-4 flex items-center">
-                    <DoorOpen className="mr-2"/> Bekleyen Oyun Davetleri
+                    <DoorOpen className="mr-2"/> {t('dashboard.invites')}
                     {invitations.length > 0 && (
                         <span className="ml-2 bg-indigo-500 text-white text-xs px-2 py-0.5 rounded-full">{invitations.length}</span>
                     )}
                 </h2>
 
                 {invitations.length === 0 ? (
-                     <div className="text-slate-500 text-center py-8">Bekleyen davet yok.</div>
+                     <div className="text-slate-500 text-center py-8">{t('dashboard.no_invites')}</div>
                 ) : (
                     <div className="space-y-3">
                         {invitations.map((invite, idx) => (
@@ -457,7 +459,7 @@ export const DashboardPage = () => {
                                 <div>
                                     <div className="font-bold text-lg text-white">{invite.roomName}</div>
                                     <div className="text-xs text-slate-400">
-                                        Davet eden: <span className="text-amber-500">{invite.inviterName}</span>
+                                        {t('dashboard.invited_by')} <span className="text-amber-500">{invite.inviterName}</span>
                                         <span className="mx-1">•</span>
                                         {new Date(invite.timestamp).toLocaleDateString()}
                                     </div>
@@ -467,13 +469,13 @@ export const DashboardPage = () => {
                                         onClick={() => handleAcceptInvite(invite)}
                                         className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white font-bold text-sm flex items-center"
                                     >
-                                        <Check size={16} className="mr-1"/> Katıl
+                                        <Check size={16} className="mr-1"/> {t('dashboard.accept')}
                                     </button>
                                     <button
                                         onClick={() => handleRejectInvite(invite)}
                                         className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white font-bold text-sm flex items-center"
                                     >
-                                        <X size={16} className="mr-1"/> Reddet
+                                        <X size={16} className="mr-1"/> {t('dashboard.reject')}
                                     </button>
                                 </div>
                             </div>
@@ -488,34 +490,34 @@ export const DashboardPage = () => {
         <Modal
             isOpen={isCreateModalOpen}
             onClose={() => setIsCreateModalOpen(false)}
-            title="Yeni Oda Oluştur"
+            title={t('room_modal.create_title')}
         >
             <form onSubmit={handleCreateRoom} className="space-y-4">
                 <div>
-                    <label className="block text-sm font-bold text-slate-400 mb-1">Oda Adı</label>
+                    <label className="block text-sm font-bold text-slate-400 mb-1">{t('room_modal.room_name')}</label>
                     <input
                         value={newRoomName}
                         onChange={(e) => setNewRoomName(e.target.value)}
                         className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-amber-500 outline-none"
-                        placeholder="Ejderha Mızrağı"
+                        placeholder={t('room_modal.room_name_placeholder')}
                         required
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-bold text-slate-400 mb-1">Şifre (İsteğe Bağlı)</label>
+                    <label className="block text-sm font-bold text-slate-400 mb-1">{t('room_modal.password')}</label>
                     <input
                         type="password"
                         value={newRoomPassword}
                         onChange={(e) => setNewRoomPassword(e.target.value)}
                         className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-amber-500 outline-none"
-                        placeholder="Boş bırakılırsa onayla giriş yapılır"
+                        placeholder={t('room_modal.password_placeholder')}
                     />
                     <p className="text-xs text-slate-500 mt-1">
-                        Şifre belirlerseniz, şifreyi bilen herkes girebilir. Şifre yoksa, her katılım isteğini onaylamanız gerekir.
+                        {t('room_modal.password_hint')}
                     </p>
                 </div>
                 <button type="submit" className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded mt-4">
-                    Oluştur
+                    {t('room_modal.create_btn')}
                 </button>
             </form>
         </Modal>
@@ -524,46 +526,46 @@ export const DashboardPage = () => {
         <Modal
             isOpen={isJoinModalOpen}
             onClose={() => setIsJoinModalOpen(false)}
-            title="Odaya Katıl"
+            title={t('room_modal.join_title')}
         >
              <form onSubmit={handleJoinRoom} className="space-y-4">
                 <div>
-                    <label className="block text-sm font-bold text-slate-400 mb-1">Oda ID</label>
+                    <label className="block text-sm font-bold text-slate-400 mb-1">{t('room_modal.room_id')}</label>
                     <input
                         value={joinRoomId}
                         onChange={(e) => setJoinRoomId(e.target.value)}
                         className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-amber-500 outline-none"
-                        placeholder="Oda kodunu girin"
+                        placeholder={t('room_modal.room_id_placeholder')}
                         required
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-bold text-slate-400 mb-1">Şifre (Varsa)</label>
+                    <label className="block text-sm font-bold text-slate-400 mb-1">{t('room_modal.password_if_any')}</label>
                     <input
                         type="password"
                         value={joinRoomPassword}
                         onChange={(e) => setJoinRoomPassword(e.target.value)}
                         className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-amber-500 outline-none"
-                        placeholder="Oda şifresi"
+                        placeholder="******"
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-bold text-slate-400 mb-1">Rol Seçimi</label>
+                    <label className="block text-sm font-bold text-slate-400 mb-1">{t('room_modal.role_select')}</label>
                     <select
                         value={selectedRole}
                         onChange={(e) => setSelectedRole(e.target.value)}
                         className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-amber-500 outline-none"
                     >
-                        <option value="player">Oyuncu</option>
-                        <option value="spectator">İzleyici</option>
-                        <option value="dm">DM (Yönetici)</option>
+                        <option value="player">{t('room_modal.role_player')}</option>
+                        <option value="spectator">{t('room_modal.role_spectator')}</option>
+                        <option value="dm">{t('room_modal.role_dm')}</option>
                     </select>
                 </div>
 
                 {joinError && <div className="text-red-400 text-sm bg-red-900/20 p-2 rounded border border-red-900/50">{joinError}</div>}
 
                 <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded mt-4 flex items-center justify-center">
-                    <LogIn className="w-4 h-4 mr-2"/> Katıl / İstek Gönder
+                    <LogIn className="w-4 h-4 mr-2"/> {t('room_modal.join_btn')}
                 </button>
             </form>
         </Modal>
