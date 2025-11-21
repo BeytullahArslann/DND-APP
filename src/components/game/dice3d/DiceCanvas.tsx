@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Physics, usePlane, useBox } from '@react-three/cannon';
-import { OrbitControls, Environment, ContactShadows, Stars } from '@react-three/drei';
+import { OrbitControls, Environment, ContactShadows, RoundedBox } from '@react-three/drei';
 import Die from './Die';
 import * as THREE from 'three';
 
@@ -10,64 +10,69 @@ interface DiceCanvasProps {
   rolling: boolean;
 }
 
-// A container box for the dice to roll inside
-const DiceTray = () => {
-    // Floor
-    usePlane(() => ({
-        rotation: [-Math.PI / 2, 0, 0],
-        position: [0, -2, 0],
-        material: { friction: 0.3, restitution: 0.6 }
-    }));
+const Tray = () => {
+  // Physics Floor (Invisible)
+  const [ref] = usePlane(() => ({
+    rotation: [-Math.PI / 2, 0, 0],
+    position: [0, -2, 0],
+    material: { friction: 0.7, restitution: 0.3 }
+  }));
 
-    // Walls (Invisible physics, visible mesh borders)
-    // Back
-    useBox(() => ({ position: [0, 0, -8], args: [20, 5, 1] }));
-    // Front
-    useBox(() => ({ position: [0, 0, 8], args: [20, 5, 1] }));
-    // Left
-    useBox(() => ({ position: [-12, 0, 0], args: [1, 5, 16] }));
-    // Right
-    useBox(() => ({ position: [12, 0, 0], args: [1, 5, 16] }));
+  // Physics Walls (Invisible)
+  // Walls aligned to match visual inner boundaries
+  // Y=0 ensures they span from -2 to +2 (height 4)
+  useBox(() => ({ position: [0, 0, -7.25], args: [22, 4, 1] })); // Top
+  useBox(() => ({ position: [0, 0, 7.25], args: [22, 4, 1] }));  // Bottom
+  useBox(() => ({ position: [-10.0, 0, 0], args: [1, 4, 16] })); // Left
+  useBox(() => ({ position: [10.0, 0, 0], args: [1, 4, 16] }));  // Right
 
-    return (
-        <group position={[0, -2.05, 0]}>
-            {/* Table Surface */}
-            <mesh receiveShadow rotation={[-Math.PI/2, 0, 0]}>
-                <planeGeometry args={[100, 100]} />
-                <meshStandardMaterial color="#281a12" roughness={0.8} />
-            </mesh>
+  // Visual Materials
+  const rimMaterial = (
+      <meshStandardMaterial
+          color="#3E2723"
+          roughness={0.7}
+      />
+  );
 
-            {/* Tray Visuals */}
-            <mesh receiveShadow position={[0, 0.1, 0]}>
-                 <boxGeometry args={[24, 0.2, 16]} />
-                 <meshStandardMaterial color="#3d2616" roughness={0.6} />
-            </mesh>
-            {/* Tray Borders */}
-            <mesh castShadow position={[0, 1, -8]}>
-                <boxGeometry args={[24, 2, 0.5]} />
-                <meshStandardMaterial color="#5c3a21" />
-            </mesh>
-            <mesh castShadow position={[0, 1, 8]}>
-                <boxGeometry args={[24, 2, 0.5]} />
-                <meshStandardMaterial color="#5c3a21" />
-            </mesh>
-            <mesh castShadow position={[-12, 1, 0]}>
-                <boxGeometry args={[0.5, 2, 16.5]} />
-                <meshStandardMaterial color="#5c3a21" />
-            </mesh>
-             <mesh castShadow position={[12, 1, 0]}>
-                <boxGeometry args={[0.5, 2, 16.5]} />
-                <meshStandardMaterial color="#5c3a21" />
-            </mesh>
+  return (
+    <group>
+      {/* Floor Physics Ref */}
+      <mesh ref={ref as any} visible={false}>
+        <planeGeometry args={[100, 100]} />
+      </mesh>
 
-            {/* Felt/Carpet inside tray */}
-            <mesh receiveShadow position={[0, 0.21, 0]} rotation={[-Math.PI/2, 0, 0]}>
-                <planeGeometry args={[23, 15]} />
-                <meshStandardMaterial color="#1e293b" roughness={1} />
-            </mesh>
-        </group>
-    );
-}
+      {/* Visual Tray Floor */}
+      <mesh receiveShadow position={[0, -1.95, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+         <boxGeometry args={[20, 14, 0.1]} />
+         <meshStandardMaterial color="#6D4C41" roughness={0.8} />
+      </mesh>
+
+      {/* Visual Walls - Rounded and Thick */}
+      {/* Top Wall */}
+      <RoundedBox args={[22, 2, 1.5]} radius={0.5} smoothness={4} position={[0, -1, -7.5]} castShadow receiveShadow>
+          {rimMaterial}
+      </RoundedBox>
+      {/* Bottom Wall */}
+      <RoundedBox args={[22, 2, 1.5]} radius={0.5} smoothness={4} position={[0, -1, 7.5]} castShadow receiveShadow>
+          {rimMaterial}
+      </RoundedBox>
+      {/* Left Wall */}
+      <RoundedBox args={[1.5, 2, 13.5]} radius={0.5} smoothness={4} position={[-10.25, -1, 0]} castShadow receiveShadow>
+          {rimMaterial}
+      </RoundedBox>
+      {/* Right Wall */}
+      <RoundedBox args={[1.5, 2, 13.5]} radius={0.5} smoothness={4} position={[10.25, -1, 0]} castShadow receiveShadow>
+          {rimMaterial}
+      </RoundedBox>
+
+      {/* Table Surface around the tray */}
+      <mesh receiveShadow position={[0, -2.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[100, 100]} />
+        <meshStandardMaterial color="#EFEBE9" roughness={1} />
+      </mesh>
+    </group>
+  );
+};
 
 export const DiceCanvas = ({ dice, rolling }: DiceCanvasProps) => {
   const diceWithPos = useMemo(() => {
@@ -75,65 +80,50 @@ export const DiceCanvas = ({ dice, rolling }: DiceCanvasProps) => {
           ...d,
           startPos: [
               (Math.random() - 0.5) * 4,
-              4 + i * 0.5,
+              5 + i * 1.5,
               (Math.random() - 0.5) * 2
           ] as [number, number, number],
-          color: getColor(d.type)
       }));
   }, [dice]);
 
   return (
-    <Canvas shadows camera={{ position: [0, 12, 8], fov: 45 }}>
-      {/* Atmospheric Lighting */}
-      <ambientLight intensity={0.4} />
+    <Canvas shadows camera={{ position: [0, 14, 8], fov: 35 }}>
+      {/* Lighting Setup for Studio Look */}
+      <ambientLight intensity={0.6} color="#FFE0B2" />
       <spotLight
-          position={[10, 20, 10]}
-          angle={0.3}
+          position={[5, 15, 5]}
+          angle={0.5}
           penumbra={1}
-          intensity={2}
+          intensity={1.2}
           castShadow
-          shadow-mapSize={[1024, 1024]}
+          shadow-bias={-0.0001}
       />
-      <pointLight position={[-10, 10, -10]} intensity={0.5} color="#fbbf24" />
+      <pointLight position={[-5, 5, -5]} intensity={0.5} color="#EFEBE9" />
 
-      {/* Background */}
-      <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
-      <Environment preset="sunset" blur={0.6} />
+      <Environment preset="apartment" blur={0.8} background={false} />
 
-      <Physics gravity={[0, -20, 0]}>
-        <DiceTray />
+      <Physics gravity={[0, -30, 0]}>
+        <Tray />
         {diceWithPos.map((d) => (
           <Die
             key={d.id}
             sides={d.type}
             position={d.startPos}
-            color={d.color}
           />
         ))}
       </Physics>
 
-      <ContactShadows position={[0, -2, 0]} opacity={0.6} scale={40} blur={2.5} far={4} color="#000000" />
+      {/* Shadows on the floor */}
+      <ContactShadows position={[0, -2, 0]} opacity={0.4} scale={40} blur={2.5} far={4} color="#1a1a1a" />
+
       <OrbitControls
           enableZoom={true}
           enablePan={false}
           minPolarAngle={0}
           maxPolarAngle={Math.PI / 2.2}
-          maxDistance={20}
-          minDistance={5}
+          maxDistance={25}
+          minDistance={10}
       />
     </Canvas>
   );
-};
-
-const getColor = (sides: number) => {
-    // More sophisticated colors
-    switch (sides) {
-        case 4: return '#ef4444';
-        case 6: return '#3b82f6';
-        case 8: return '#22c55e';
-        case 10: return '#9333ea';
-        case 12: return '#ea580c';
-        case 20: return '#eab308';
-        default: return '#ffffff';
-    }
 };

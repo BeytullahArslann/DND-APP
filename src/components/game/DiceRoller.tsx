@@ -15,7 +15,7 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
   // History State
   const [history, setHistory] = useState<RollLog[]>([]);
 
-  // Selection State (e.g. { 20: 2, 6: 1 } means 2d20 + 1d6)
+  // Selection State
   const [selection, setSelection] = useState<Record<number, number>>({});
 
   // 3D Scene State
@@ -23,7 +23,7 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
   const [isRolling, setIsRolling] = useState(false);
   const [resultState, setResultState] = useState<{ total: number, details: string } | null>(null);
 
-  // Refs for unmount safety
+  // Refs
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -75,7 +75,7 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
     setIsRolling(true);
     setResultState(null);
 
-    // 1. Generate Dice for 3D view & Calculate Results locally
+    // 1. Generate Dice for 3D view & Calculate Results
     const newDice: {type: number, id: string}[] = [];
     const results: {sides: number, result: number}[] = [];
     let total = 0;
@@ -90,10 +90,9 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
         }
     });
 
-    // Update 3D view
     setActiveDice(newDice);
 
-    // 2. Wait for animation (fake delay)
+    // 2. Wait for animation
     setTimeout(async () => {
         if (!isMounted.current) return;
 
@@ -102,7 +101,6 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
         setIsRolling(false);
 
         // 3. Batch write to Firestore
-        // We write each die individually to maintain history granularity compatible with existing types
         const promises = results.map(r =>
              addDoc(collection(db, 'artifacts', appId, 'public', 'data', `room_${roomCode}_rolls`), {
               playerName: user.displayName,
@@ -120,117 +118,114 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
             console.error("Error saving rolls:", error);
         }
 
-    }, 2500); // 2.5 seconds for dice to fall
+    }, 2000);
   };
 
   const totalSelected = Object.values(selection).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="flex flex-col h-full relative bg-slate-900">
-      {/* 3D Area - Takes remaining space */}
-      <div className="flex-1 relative bg-slate-800 overflow-hidden rounded-t-xl shadow-inner">
-          {/* Result Overlay */}
+    <div className="flex flex-col h-full relative" style={{ backgroundColor: '#EFEBE9' }}>
+
+      {/* 3D Scene Area */}
+      <div className="flex-1 relative overflow-hidden">
+          {/* Top Overlay: Total Result - Wood Plank Style */}
           {resultState && (
-               <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-                   <div className="bg-black/70 p-6 rounded-2xl backdrop-blur-md animate-in fade-in zoom-in duration-300 text-center border-2 border-amber-500/50 shadow-2xl">
-                       <div className="text-slate-200 text-lg font-bold mb-2 uppercase tracking-wider">Toplam</div>
-                       <div className="text-7xl font-black text-amber-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]">
-                           {resultState.total}
+               <div className="absolute top-8 left-0 right-0 z-10 flex flex-col items-center pointer-events-none animate-in fade-in slide-in-from-top-4 duration-500">
+                   <div
+                        className="relative px-12 py-3 shadow-xl flex flex-col items-center justify-center transform hover:scale-105 transition-transform"
+                        style={{
+                            background: `linear-gradient(to bottom, #A1887F, #6D4C41, #5D4037)`,
+                            borderRadius: '12px',
+                            border: '4px solid #4E342E',
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)'
+                        }}
+                   >
+                       {/* Wood grain effect via CSS gradient or just color */}
+                       <div className="text-amber-100 text-lg font-bold uppercase tracking-widest drop-shadow-md font-serif">
+                           Toplam: {resultState.total}
                        </div>
-                       <div className="text-slate-400 text-xs mt-4 font-mono bg-black/50 p-2 rounded">
-                           {resultState.details}
-                       </div>
+
+                       {/* Nails */}
+                       <div className="absolute top-2 left-2 w-2 h-2 rounded-full bg-stone-800 shadow-inner"></div>
+                       <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-stone-800 shadow-inner"></div>
+                       <div className="absolute bottom-2 left-2 w-2 h-2 rounded-full bg-stone-800 shadow-inner"></div>
+                       <div className="absolute bottom-2 right-2 w-2 h-2 rounded-full bg-stone-800 shadow-inner"></div>
+                   </div>
+
+                   <div className="mt-2 px-4 py-1 bg-black/40 rounded-full text-white text-xs backdrop-blur-sm">
+                       {resultState.details}
                    </div>
                </div>
           )}
 
-          {/* The Canvas */}
-          <div className="absolute inset-0">
+          {/* Canvas */}
+          <div className="absolute inset-0 z-0">
              <DiceCanvas dice={activeDice} rolling={isRolling} />
           </div>
 
-          {/* Hint if empty */}
+          {/* Hint Overlay if empty */}
           {activeDice.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center text-slate-600 pointer-events-none select-none">
-                  <div className="text-center opacity-50">
-                      <div className="text-6xl mb-4 animate-bounce">🎲</div>
-                      <p className="text-xl font-light">Zar seç ve at</p>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0">
+                  <div className="text-center opacity-30 text-stone-800">
+                       <h2 className="text-2xl font-serif font-bold italic">Zarlarını Seç</h2>
                   </div>
               </div>
           )}
       </div>
 
-      {/* Controls Area */}
-      <div className="bg-slate-900 p-4 border-t border-slate-800 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
-          {/* Selection Summary */}
+      {/* Bottom Controls Area - "Rustic" Panel */}
+      <div className="relative z-20 pb-6 pt-2 px-4 flex flex-col items-center gap-4 bg-gradient-to-t from-[#D7CCC8] to-transparent">
+
+          {/* Selection List (Floating above buttons) */}
           {totalSelected > 0 && (
-              <div className="flex items-center justify-between mb-4 bg-slate-800/50 p-2 rounded-lg border border-slate-700">
-                  <div className="flex flex-wrap gap-2">
-                      {Object.entries(selection).map(([sides, count]) => count > 0 && (
-                          <span key={sides} className="bg-slate-700 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center border border-slate-600">
-                              <span className="text-amber-500 mr-1">{count}</span>
-                              <span>d{sides}</span>
-                          </span>
-                      ))}
-                  </div>
-                  <button onClick={clearSelection} className="text-red-400 hover:text-red-300 p-2 hover:bg-red-900/20 rounded transition-colors">
-                      <Trash2 size={18} />
+              <div className="flex flex-wrap justify-center gap-2 mb-2 animate-in slide-in-from-bottom-2 fade-in">
+                  {Object.entries(selection).map(([sides, count]) => count > 0 && (
+                      <div key={sides} className="bg-[#5D4037] text-[#EFEBE9] px-3 py-1 rounded shadow-md border border-[#3E2723] flex items-center gap-2 text-sm font-serif">
+                          <span className="font-bold text-amber-400">{count}x</span> d{sides}
+                      </div>
+                  ))}
+                  <button onClick={clearSelection} className="bg-red-900/80 hover:bg-red-800 text-white p-1 rounded shadow transition-colors border border-red-950">
+                      <Trash2 size={16} />
                   </button>
               </div>
           )}
 
-          <div className="flex gap-2 items-stretch">
-              {/* Dice Buttons */}
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 flex-1">
+          <div className="flex flex-col items-center gap-6 w-full max-w-lg">
+
+              {/* Roll Button - Big Wood Plank */}
+              {totalSelected > 0 && (
+                <button
+                  onClick={handleRoll}
+                  disabled={isRolling}
+                  className="relative group w-64 h-16 flex items-center justify-center transform transition-all active:scale-95 disabled:opacity-80 disabled:cursor-not-allowed"
+                  style={{
+                      background: `linear-gradient(to bottom, #8D6E63, #5D4037, #4E342E)`,
+                      borderRadius: '50px', // More rounded like a lozenge or plank
+                      border: '3px solid #3E2723',
+                      boxShadow: '0 8px 0 #271c19, 0 15px 20px rgba(0,0,0,0.4)'
+                  }}
+                >
+                    <span className="text-2xl font-black text-[#FFECB3] tracking-widest drop-shadow-md font-serif group-hover:text-white transition-colors">
+                        {isRolling ? '...' : 'ZAR AT!'}
+                    </span>
+                    {/* Shine effect */}
+                    <div className="absolute inset-0 rounded-[48px] bg-gradient-to-b from-white/10 to-transparent pointer-events-none"></div>
+                </button>
+              )}
+
+              {/* Dice Selection Bar */}
+              <div className="flex gap-2 p-2 bg-[#8D6E63]/20 backdrop-blur-sm rounded-full border border-[#8D6E63]/30 shadow-inner">
                 {[4, 6, 8, 10, 12, 20].map(sides => (
                   <button
                     key={sides}
                     onClick={() => addToSelection(sides)}
-                    className="bg-slate-800 hover:bg-slate-700 border border-slate-600 hover:border-amber-500/50 text-slate-200 p-2 rounded-lg font-bold transition-all flex flex-col items-center justify-center group active:scale-95"
+                    className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-[#EFEBE9] hover:bg-white text-[#5D4037] font-bold border-2 border-[#8D6E63] shadow-sm hover:shadow-md hover:-translate-y-1 transition-all active:translate-y-0"
                   >
-                    <span className="text-xs text-slate-500 group-hover:text-amber-500 uppercase tracking-tighter">d{sides}</span>
-                    <span className="text-xl">{sides}</span>
+                    <span className="text-sm sm:text-base font-serif">d{sides}</span>
                   </button>
                 ))}
               </div>
-
-              {/* Roll Button */}
-              {totalSelected > 0 && (
-                  <button
-                    onClick={handleRoll}
-                    disabled={isRolling}
-                    className="bg-gradient-to-br from-amber-600 to-amber-800 hover:from-amber-500 hover:to-amber-700 text-white px-6 rounded-lg font-black text-xl shadow-lg shadow-amber-900/20 transform transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed min-w-[100px] flex flex-col items-center justify-center"
-                  >
-                    {isRolling ? (
-                        <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                        'AT'
-                    )}
-                  </button>
-              )}
           </div>
-      </div>
-
-      {/* Recent History (Collapsible or Small) */}
-      <div className="bg-slate-950 p-2 max-h-32 overflow-y-auto border-t border-slate-900">
-         <div className="flex items-center text-xs text-slate-500 mb-2 sticky top-0 bg-slate-950 py-1 z-10">
-             <HistoryIcon className="w-3 h-3 mr-1" /> Son Atışlar
-         </div>
-         <div className="space-y-1">
-             {history.map((roll) => (
-                 <div key={roll.id} className="flex justify-between items-center text-xs text-slate-400 px-2 py-1 hover:bg-slate-900 rounded transition-colors">
-                     <span className="flex items-center">
-                         <span className="font-medium text-slate-300 mr-2">{roll.playerName}</span>
-                         <span className="text-slate-600">
-                             {roll.type === 'spell' ? roll.spellName : `d${roll.sides}`}
-                         </span>
-                     </span>
-                     <span className={`font-bold font-mono ${roll.type === 'dice' && roll.result === roll.sides ? 'text-green-500' : roll.type === 'dice' && roll.result === 1 ? 'text-red-500' : 'text-amber-500'}`}>
-                        {roll.damage ? roll.damage : roll.result}
-                     </span>
-                 </div>
-             ))}
-         </div>
       </div>
     </div>
   );
