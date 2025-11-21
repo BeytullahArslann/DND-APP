@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { userService } from '../../services/userService';
 import { UserProfile } from '../../types';
-import { Search, Shield, ShieldOff } from 'lucide-react';
+import { Search, Shield, ShieldOff, Ban, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const UsersPage: React.FC = () => {
@@ -40,6 +40,39 @@ const UsersPage: React.FC = () => {
         alert("İşlem başarısız oldu.");
       }
     }
+  };
+
+  const handleBanUser = async (targetUid: string, isBanned: boolean | undefined) => {
+      if (targetUid === currentUser?.uid) {
+          alert("Kendinizi yasaklayamazsınız.");
+          return;
+      }
+      const action = isBanned ? 'yasağını kaldırmak' : 'yasaklamak';
+      if (confirm(`Bu kullanıcıyı ${action} istediğinize emin misiniz?`)) {
+          try {
+              await userService.banUser(targetUid, !isBanned);
+              fetchUsers();
+          } catch (error) {
+              console.error("Error banning user:", error);
+              alert("İşlem başarısız oldu.");
+          }
+      }
+  };
+
+  const handleDeleteUser = async (targetUid: string) => {
+      if (targetUid === currentUser?.uid) {
+          alert("Kendinizi silemezsiniz.");
+          return;
+      }
+      if (confirm("Bu kullanıcıyı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.")) {
+          try {
+              await userService.deleteUser(targetUid);
+              fetchUsers();
+          } catch (error) {
+              console.error("Error deleting user:", error);
+              alert("İşlem başarısız oldu.");
+          }
+      }
   };
 
   const filteredUsers = users.filter(u =>
@@ -95,7 +128,10 @@ const UsersPage: React.FC = () => {
                           {u.displayName?.charAt(0) || '?'}
                         </div>
                       )}
-                      <span className="font-medium text-white">{u.displayName || 'İsimsiz'}</span>
+                      <div>
+                          <span className="font-medium text-white block">{u.displayName || 'İsimsiz'}</span>
+                          {u.isBanned && <span className="text-xs text-red-500 font-bold">Yasaklı</span>}
+                      </div>
                     </td>
                     <td className="px-6 py-4">{u.email}</td>
                     <td className="px-6 py-4">
@@ -109,17 +145,35 @@ const UsersPage: React.FC = () => {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right flex justify-end gap-2">
                       <button
                         onClick={() => handleToggleAdmin(u.uid, u.isAdmin)}
                         className={`p-2 rounded transition-colors ${
                           u.isAdmin
-                            ? 'text-red-400 hover:bg-red-900/50 hover:text-red-200'
-                            : 'text-green-400 hover:bg-green-900/50 hover:text-green-200'
+                            ? 'text-yellow-400 hover:bg-yellow-900/50'
+                            : 'text-green-400 hover:bg-green-900/50'
                         }`}
                         title={u.isAdmin ? "Admin yetkisini al" : "Admin yap"}
                       >
                         {u.isAdmin ? <ShieldOff size={20} /> : <Shield size={20} />}
+                      </button>
+                      <button
+                          onClick={() => handleBanUser(u.uid, u.isBanned)}
+                          className={`p-2 rounded transition-colors ${
+                              u.isBanned
+                                  ? 'text-gray-400 hover:bg-gray-700'
+                                  : 'text-orange-400 hover:bg-orange-900/50'
+                          }`}
+                          title={u.isBanned ? "Yasağı kaldır" : "Yasakla"}
+                      >
+                          <Ban size={20} />
+                      </button>
+                      <button
+                          onClick={() => handleDeleteUser(u.uid)}
+                          className="p-2 rounded transition-colors text-red-400 hover:bg-red-900/50"
+                          title="Kullanıcıyı sil"
+                      >
+                          <Trash2 size={20} />
                       </button>
                     </td>
                   </tr>

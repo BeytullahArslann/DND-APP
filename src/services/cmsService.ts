@@ -182,6 +182,8 @@ export const cmsService = {
         if (snap.empty) {
            await addDoc(collection(db, RULES_COLLECTION), ruleDoc);
            console.log(`Added rule section: ${section.name}`);
+        } else {
+            console.log(`Skipped rule section: ${section.name} (Already exists)`);
         }
       }
     }
@@ -218,6 +220,7 @@ export const cmsService = {
             await addDoc(collection(db, SPELLS_COLLECTION), spellDoc);
             console.log(`Added spell: ${spell.name}`);
         }
+        // We don't log every skipped spell to avoid spamming
     }
 
     console.log("Seeding complete.");

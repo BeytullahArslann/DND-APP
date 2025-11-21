@@ -172,5 +172,22 @@ export const userService = {
   async updateProfileData(uid: string, data: Partial<UserProfile>): Promise<void> {
     const userRef = doc(db, 'artifacts', appId, 'users', uid);
     await setDoc(userRef, data, { merge: true });
+  },
+
+  /**
+   * Bans or unbans a user.
+   */
+  async banUser(uid: string, isBanned: boolean): Promise<void> {
+    const userRef = doc(db, 'artifacts', appId, 'users', uid);
+    await updateDoc(userRef, { isBanned });
+  },
+
+  /**
+   * Deletes a user profile (admin action).
+   * Note: This only deletes the Firestore document. Auth deletion requires Admin SDK.
+   */
+  async deleteUser(uid: string): Promise<void> {
+    const userRef = doc(db, 'artifacts', appId, 'users', uid);
+    await deleteDoc(userRef);
   }
 };

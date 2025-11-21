@@ -9,6 +9,10 @@ interface RulesRendererProps {
 
 const RulesRenderer: React.FC<RulesRendererProps> = ({ entry, depth = 0 }) => {
   if (typeof entry === 'string') {
+    if (entry.trim().startsWith('<')) {
+       // Assume HTML from Rich Text Editor
+       return <div className="mb-2 text-gray-300 text-base leading-relaxed prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: entry }} />;
+    }
     return <p className="mb-2 text-gray-300 text-base leading-relaxed">{parseRuleText(entry)}</p>;
   }
 

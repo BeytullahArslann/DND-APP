@@ -121,20 +121,20 @@ const SpellsList: React.FC<SpellsListProps> = ({ data }) => {
                         <div>
                             <span className="block text-gray-500 text-xs uppercase tracking-wider">Kullanım Süresi</span>
                             <span className="text-white font-medium">
-                                {spell.time?.[0]?.number} {spell.time?.[0]?.unit} {spell.time?.[0]?.condition ? `(${spell.time[0].condition})` : ''}
+                                {spell.time?.[0]?.number ? `${spell.time[0].number} ${spell.time[0].unit}` : spell.time?.[0]?.unit || '-'} {spell.time?.[0]?.condition ? `(${spell.time[0].condition})` : ''}
                             </span>
                         </div>
                         <div>
                             <span className="block text-gray-500 text-xs uppercase tracking-wider">Menzil</span>
                             <span className="text-white font-medium">
-                                {spell.range.distance?.amount ? `${spell.range.distance.amount} ft` : spell.range.distance?.type}
+                                {spell.range.distance?.amount ? `${spell.range.distance.amount} ft` : (spell.range.distance?.type || '-')}
                             </span>
                         </div>
                         <div>
                             <span className="block text-gray-500 text-xs uppercase tracking-wider">Süre</span>
                             <span className="text-white font-medium">
                                 {spell.duration?.[0]?.concentration ? 'Kons. ' : ''}
-                                {spell.duration?.[0]?.duration ? `${spell.duration[0].duration.amount} ${spell.duration[0].duration.type}` : spell.duration?.[0]?.type}
+                                {spell.duration?.[0]?.duration ? `${spell.duration[0].duration.amount} ${spell.duration[0].duration.type}` : (spell.duration?.[0]?.type || '-')}
                             </span>
                         </div>
                         <div>
@@ -143,16 +143,20 @@ const SpellsList: React.FC<SpellsListProps> = ({ data }) => {
                                 {[
                                     spell.components.v && 'V',
                                     spell.components.s && 'S',
-                                    spell.components.m && (typeof spell.components.m === 'string' ? `M (${spell.components.m})` : `M (${spell.components.m.text})`)
-                                ].filter(Boolean).join(', ')}
+                                    spell.components.m && (typeof spell.components.m === 'string' ? `M (${spell.components.m})` : `M (${spell.components.m?.text || ''})`)
+                                ].filter(Boolean).join(', ') || '-'}
                             </span>
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        {spell.entries.map((entry, i) => (
-                            <RulesRenderer key={i} entry={entry} />
-                        ))}
+                    <div className="space-y-2 text-gray-300">
+                        {spell.entries.map((entry, i) => {
+                             if (typeof entry === 'string' && entry.trim().startsWith('<')) {
+                                 // Render HTML content from editor
+                                 return <div key={i} dangerouslySetInnerHTML={{ __html: entry }} className="prose prose-invert max-w-none" />
+                             }
+                             return <RulesRenderer key={i} entry={entry} />
+                        })}
                     </div>
 
                     {spell.entriesHigherLevel && (

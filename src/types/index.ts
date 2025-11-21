@@ -98,6 +98,7 @@ export interface UserProfile {
   roomInvites?: RoomInvite[];
   isAdmin?: boolean;
   bio?: string;
+  isBanned?: boolean;
 }
 
 export interface Room {
