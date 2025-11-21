@@ -73,25 +73,35 @@ const RulesRenderer: React.FC<RulesRendererProps> = ({ entry, depth = 0 }) => {
               </tr>
             </thead>
             <tbody>
-              {entry.rows?.map((row, rowIdx) => (
-                <tr key={rowIdx} className="border-b border-gray-800 hover:bg-gray-800/50">
-                  {Array.isArray(row) ? (
-                    row.map((cell, cellIdx) => (
-                      <td key={cellIdx} className="p-2 border-r border-gray-800 last:border-r-0">
-                        {typeof cell === 'object' && cell.type === 'cell' ?
-                            (cell.roll ? `${cell.roll.exact || cell.roll.min}-${cell.roll.max}` : '')
-                            : <RulesRenderer entry={cell} depth={depth} />
-                        }
-                      </td>
-                    ))
-                  ) : (
-                     // Handle object rows (like special styled rows)
-                     <td colSpan={entry.colLabels?.length || 1} className="p-2">
-                        <RulesRenderer entry={row} depth={depth} />
-                     </td>
-                  )}
-                </tr>
-              ))}
+              {entry.rows?.map((row, rowIdx) => {
+                let cells: any[] = [];
+                // Handle old format (nested array) or new Firestore format (object with cells property)
+                if (Array.isArray(row)) {
+                    cells = row;
+                } else if ((row as any).cells && Array.isArray((row as any).cells)) {
+                    cells = (row as any).cells;
+                }
+
+                return (
+                    <tr key={rowIdx} className="border-b border-gray-800 hover:bg-gray-800/50">
+                    {cells.length > 0 ? (
+                        cells.map((cell, cellIdx) => (
+                        <td key={cellIdx} className="p-2 border-r border-gray-800 last:border-r-0">
+                            {typeof cell === 'object' && cell !== null && (cell as any).type === 'cell' ?
+                                ((cell as any).roll ? `${(cell as any).roll.exact || (cell as any).roll.min}-${(cell as any).roll.max}` : '')
+                                : <RulesRenderer entry={cell} depth={depth} />
+                            }
+                        </td>
+                        ))
+                    ) : (
+                        // Handle object rows (like special styled rows or other structures) that are not wrapped arrays
+                        <td colSpan={entry.colLabels?.length || 1} className="p-2">
+                            <RulesRenderer entry={row} depth={depth} />
+                        </td>
+                    )}
+                    </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -34,16 +34,36 @@ const sanitizeData = (data: any) => {
   }, {} as any);
 };
 
+const sanitizeForFirestore = (obj: any): any => {
+  if (Array.isArray(obj)) {
+    // Check if it's a nested array (array of arrays)
+    if (obj.length > 0 && Array.isArray(obj[0])) {
+      // Transform to object wrapper
+      return obj.map(item => ({ cells: sanitizeForFirestore(item) }));
+    }
+    return obj.map(sanitizeForFirestore);
+  } else if (typeof obj === 'object' && obj !== null) {
+    const newObj: any = {};
+    for (const key in obj) {
+      if (obj[key] !== undefined) {
+        newObj[key] = sanitizeForFirestore(obj[key]);
+      }
+    }
+    return newObj;
+  }
+  return obj;
+};
+
 export const cmsService = {
   // --- Rules ---
   async getRules(language: Language): Promise<RuleDocument[]> {
     const q = query(
       collection(db, RULES_COLLECTION),
-      where('language', '==', language),
-      orderBy('order', 'asc')
+      where('language', '==', language)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RuleDocument));
+    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RuleDocument));
+    return docs.sort((a, b) => (a.order || 0) - (b.order || 0));
   },
 
   async getRule(id: string): Promise<RuleDocument | null> {
@@ -53,7 +73,7 @@ export const cmsService = {
   },
 
   async saveRule(rule: Partial<RuleDocument>) {
-    const data = sanitizeData(rule);
+    const data = sanitizeForFirestore(sanitizeData(rule));
     if (rule.id) {
       const docRef = doc(db, RULES_COLLECTION, rule.id);
       await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() });
@@ -70,16 +90,18 @@ export const cmsService = {
   async getSpells(language: Language): Promise<SpellDocument[]> {
     const q = query(
       collection(db, SPELLS_COLLECTION),
-      where('language', '==', language),
-      orderBy('level', 'asc'),
-      orderBy('name', 'asc')
+      where('language', '==', language)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SpellDocument));
+    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SpellDocument));
+    return docs.sort((a, b) => {
+        if (a.level !== b.level) return a.level - b.level;
+        return a.name.localeCompare(b.name);
+    });
   },
 
   async saveSpell(spell: Partial<SpellDocument>) {
-    const data = sanitizeData(spell);
+    const data = sanitizeForFirestore(sanitizeData(spell));
     if (spell.id) {
       const docRef = doc(db, SPELLS_COLLECTION, spell.id);
       await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() });
@@ -96,15 +118,15 @@ export const cmsService = {
   async getWeapons(language: Language): Promise<WeaponDocument[]> {
     const q = query(
       collection(db, WEAPONS_COLLECTION),
-      where('language', '==', language),
-      orderBy('name', 'asc')
+      where('language', '==', language)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WeaponDocument));
+    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WeaponDocument));
+    return docs.sort((a, b) => a.name.localeCompare(b.name));
   },
 
   async saveWeapon(weapon: Partial<WeaponDocument>) {
-    const data = sanitizeData(weapon);
+    const data = sanitizeForFirestore(sanitizeData(weapon));
     if (weapon.id) {
       const docRef = doc(db, WEAPONS_COLLECTION, weapon.id);
       await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() });
@@ -148,7 +170,7 @@ export const cmsService = {
         const ruleDoc: Omit<RuleDocument, 'id'> = {
           language: 'tr',
           title: section.name,
-          content: sectionContent,
+          content: sanitizeForFirestore(sectionContent),
           order: order++,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
