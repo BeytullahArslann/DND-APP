@@ -5,7 +5,7 @@ export interface RollLog {
   uid: string;
   sides?: number;
   result: number | string;
-  timestamp?: any;
+  timestamp?: any; // Firestore Timestamp
   type: 'dice' | 'attack' | 'spell';
   spellName?: string;
   spellType?: string;
@@ -73,4 +73,38 @@ export interface PlayerPresence {
   hp: number;
   maxHp: number;
   lastActive: any;
+}
+
+// --- New Core Types ---
+
+export type UserRole = 'dm' | 'player' | 'spectator';
+
+export interface RoomInvite {
+  roomId: string;
+  roomName: string;
+  inviterName: string;
+  timestamp: number; // Epoch
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  createdAt?: any; // Firestore Timestamp
+  lastLogin?: any; // Firestore Timestamp
+  friends: string[]; // List of UIDs
+  rooms: string[]; // List of Room IDs
+  roomInvites?: RoomInvite[];
+}
+
+export interface Room {
+  id: string;
+  name: string;
+  ownerId: string;
+  members: string[]; // Array of UIDs
+  roles: { [uid: string]: UserRole };
+  pendingRequests?: string[]; // Array of UIDs
+  createdAt?: any;
+  // Add other room specific fields here if needed
 }

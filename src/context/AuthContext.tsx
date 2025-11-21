@@ -6,8 +6,8 @@ import {
   onAuthStateChanged,
   AuthError
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { auth, googleProvider, db, appId } from '../lib/firebase';
+import { auth, googleProvider } from '../lib/firebase';
+import { userService } from '../services/userService';
 
 interface AuthContextType {
   user: User | null;
@@ -36,32 +36,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        // Create or update user document in Firestore
-        const userRef = doc(db, 'artifacts', appId, 'users', currentUser.uid);
         try {
-          const userSnap = await getDoc(userRef);
-
-          if (!userSnap.exists()) {
-              await setDoc(userRef, {
-                  uid: currentUser.uid,
-                  email: currentUser.email,
-                  displayName: currentUser.displayName,
-                  photoURL: currentUser.photoURL,
-                  createdAt: serverTimestamp(),
-                  friends: [], // List of friend UIDs
-                  rooms: [] // List of room IDs user belongs to
-              });
-          } else {
-              // Update last login or other fields if needed
-              await setDoc(userRef, {
-                  lastLogin: serverTimestamp(),
-                  displayName: currentUser.displayName, // Sync name changes
-                  photoURL: currentUser.photoURL
-              }, { merge: true });
-          }
+          await userService.syncUserProfile(currentUser);
         } catch (err) {
           console.error("Error updating user profile:", err);
-          // Don't block auth state on profile update fail, but maybe log it
+          // Don't block auth state on profile update fail
         }
       }
       setLoading(false);
