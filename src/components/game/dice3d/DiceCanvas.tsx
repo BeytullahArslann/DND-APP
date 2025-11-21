@@ -8,6 +8,7 @@ import * as THREE from 'three';
 interface DiceCanvasProps {
   dice: { type: number; id: string }[];
   rolling: boolean;
+  onDieSettled: (id: string, result: number) => void;
 }
 
 const Tray = () => {
@@ -15,22 +16,21 @@ const Tray = () => {
   const [ref] = usePlane(() => ({
     rotation: [-Math.PI / 2, 0, 0],
     position: [0, -2, 0],
-    material: { friction: 0.7, restitution: 0.3 }
+    material: { friction: 0.6, restitution: 0.5 }
   }));
 
   // Physics Walls (Invisible)
-  // Walls aligned to match visual inner boundaries
-  // Y=0 ensures they span from -2 to +2 (height 4)
-  useBox(() => ({ position: [0, 0, -7.25], args: [22, 4, 1] })); // Top
-  useBox(() => ({ position: [0, 0, 7.25], args: [22, 4, 1] }));  // Bottom
-  useBox(() => ({ position: [-10.0, 0, 0], args: [1, 4, 16] })); // Left
-  useBox(() => ({ position: [10.0, 0, 0], args: [1, 4, 16] }));  // Right
+  useBox(() => ({ position: [0, 0, -7.5], args: [22, 10, 1] })); // Top
+  useBox(() => ({ position: [0, 0, 7.5], args: [22, 10, 1] }));  // Bottom
+  useBox(() => ({ position: [-10.5, 0, 0], args: [1, 10, 16] })); // Left
+  useBox(() => ({ position: [10.5, 0, 0], args: [1, 10, 16] }));  // Right
 
   // Visual Materials
-  const rimMaterial = (
+  const trayMaterial = (
       <meshStandardMaterial
-          color="#3E2723"
-          roughness={0.7}
+          color="#5D4037" // Darker wood for tray
+          roughness={0.6}
+          metalness={0.1}
       />
   );
 
@@ -41,88 +41,91 @@ const Tray = () => {
         <planeGeometry args={[100, 100]} />
       </mesh>
 
-      {/* Visual Tray Floor */}
-      <mesh receiveShadow position={[0, -1.95, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-         <boxGeometry args={[20, 14, 0.1]} />
-         <meshStandardMaterial color="#6D4C41" roughness={0.8} />
-      </mesh>
+      {/* Visual Tray Floor - thick wood plank */}
+      <RoundedBox args={[20, 14, 0.5]} radius={0.1} smoothness={4} position={[0, -2.25, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+         {trayMaterial}
+      </RoundedBox>
 
-      {/* Visual Walls - Rounded and Thick */}
+      {/* Visual Walls - Rounded and Thick with Bevel effect */}
       {/* Top Wall */}
-      <RoundedBox args={[22, 2, 1.5]} radius={0.5} smoothness={4} position={[0, -1, -7.5]} castShadow receiveShadow>
-          {rimMaterial}
+      <RoundedBox args={[22, 1.5, 1]} radius={0.2} smoothness={4} position={[0, -1.5, -7.5]} castShadow receiveShadow>
+          {trayMaterial}
       </RoundedBox>
       {/* Bottom Wall */}
-      <RoundedBox args={[22, 2, 1.5]} radius={0.5} smoothness={4} position={[0, -1, 7.5]} castShadow receiveShadow>
-          {rimMaterial}
+      <RoundedBox args={[22, 1.5, 1]} radius={0.2} smoothness={4} position={[0, -1.5, 7.5]} castShadow receiveShadow>
+          {trayMaterial}
       </RoundedBox>
       {/* Left Wall */}
-      <RoundedBox args={[1.5, 2, 13.5]} radius={0.5} smoothness={4} position={[-10.25, -1, 0]} castShadow receiveShadow>
-          {rimMaterial}
+      <RoundedBox args={[1, 1.5, 16]} radius={0.2} smoothness={4} position={[-10.5, -1.5, 0]} castShadow receiveShadow>
+          {trayMaterial}
       </RoundedBox>
       {/* Right Wall */}
-      <RoundedBox args={[1.5, 2, 13.5]} radius={0.5} smoothness={4} position={[10.25, -1, 0]} castShadow receiveShadow>
-          {rimMaterial}
+      <RoundedBox args={[1, 1.5, 16]} radius={0.2} smoothness={4} position={[10.5, -1.5, 0]} castShadow receiveShadow>
+          {trayMaterial}
       </RoundedBox>
 
-      {/* Table Surface around the tray */}
-      <mesh receiveShadow position={[0, -2.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      {/* Table Surface underneath */}
+      <mesh receiveShadow position={[0, -2.55, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[100, 100]} />
-        <meshStandardMaterial color="#EFEBE9" roughness={1} />
+        <meshStandardMaterial color="#D7CCC8" roughness={1} />
       </mesh>
     </group>
   );
 };
 
-export const DiceCanvas = ({ dice, rolling }: DiceCanvasProps) => {
+export const DiceCanvas = ({ dice, rolling, onDieSettled }: DiceCanvasProps) => {
   const diceWithPos = useMemo(() => {
       return dice.map((d, i) => ({
           ...d,
           startPos: [
-              (Math.random() - 0.5) * 4,
-              5 + i * 1.5,
+              (Math.random() - 0.5) * 3, // Closer to center
+              8 + i * 1.5, // Drop from height
               (Math.random() - 0.5) * 2
           ] as [number, number, number],
       }));
   }, [dice]);
 
   return (
-    <Canvas shadows camera={{ position: [0, 14, 8], fov: 35 }}>
-      {/* Lighting Setup for Studio Look */}
-      <ambientLight intensity={0.6} color="#FFE0B2" />
+    <Canvas shadows camera={{ position: [0, 18, 6], fov: 35 }}>
+      {/* Warm Studio Lighting */}
+      <ambientLight intensity={0.4} color="#FFE0B2" />
+
       <spotLight
-          position={[5, 15, 5]}
-          angle={0.5}
-          penumbra={1}
-          intensity={1.2}
+          position={[5, 20, 10]}
+          angle={0.4}
+          penumbra={0.5}
+          intensity={1.5}
           castShadow
           shadow-bias={-0.0001}
+          color="#FFF3E0"
       />
-      <pointLight position={[-5, 5, -5]} intensity={0.5} color="#EFEBE9" />
 
-      <Environment preset="apartment" blur={0.8} background={false} />
+      {/* Fill light */}
+      <pointLight position={[-10, 5, -5]} intensity={0.5} color="#D7CCC8" />
 
-      <Physics gravity={[0, -30, 0]}>
+      <Environment preset="apartment" blur={0.6} background={false} />
+
+      <Physics gravity={[0, -40, 0]} defaultContactMaterial={{ friction: 0.3, restitution: 0.5 }}>
         <Tray />
         {diceWithPos.map((d) => (
           <Die
             key={d.id}
+            id={d.id}
             sides={d.type}
             position={d.startPos}
+            onSettled={onDieSettled}
           />
         ))}
       </Physics>
 
-      {/* Shadows on the floor */}
-      <ContactShadows position={[0, -2, 0]} opacity={0.4} scale={40} blur={2.5} far={4} color="#1a1a1a" />
+      <ContactShadows position={[0, -2.5, 0]} opacity={0.6} scale={50} blur={2} far={10} color="#000000" />
 
       <OrbitControls
-          enableZoom={true}
+          enableZoom={false}
           enablePan={false}
           minPolarAngle={0}
-          maxPolarAngle={Math.PI / 2.2}
-          maxDistance={25}
-          minDistance={10}
+          maxPolarAngle={Math.PI / 2.1}
+          target={[0, 0, 0]}
       />
     </Canvas>
   );
