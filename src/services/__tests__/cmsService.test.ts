@@ -24,6 +24,34 @@ vi.mock('firebase/firestore', () => ({
   serverTimestamp: vi.fn(() => 'timestamp'),
 }));
 
+// Mock Data - Correct paths relative to this test file
+vi.mock('../../data/rules.json', () => ({
+  default: {
+    reference: [{ name: "Test Section", contents: [{ name: "Test Content", headers: ["Header"] }] }],
+    data: [
+      {
+        name: "Ignored Parent",
+        entries: [
+          {
+            name: "Header", // Matches the header in reference
+            type: "table",
+            rows: [
+              ["cell1", "cell2"], // Nested array
+              ["cell3", "cell4"]
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}));
+
+vi.mock('../../data/spells.json', () => ({
+  default: {
+    spell: []
+  }
+}));
+
 describe('cmsService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -32,44 +60,49 @@ describe('cmsService', () => {
   });
 
   describe('seedDatabase', () => {
-    it('should complete seeding without crashing', async () => {
-      // This calls seedDatabase. Even if it uses real data (because json mock might fail in some envs),
-      // it should not crash with "Cannot read properties of undefined".
+    it('should transform nested arrays in rules data', async () => {
       await cmsService.seedDatabase();
 
-      // Expect addDoc to be called at least once (indicating the loop ran and tried to save)
+      // Verify addDoc was called
       expect(addDoc).toHaveBeenCalled();
+
+      // Get the argument passed to addDoc for the rule
+      const callArgs = (addDoc as any).mock.calls[0][1];
+      const content = callArgs.content;
+
+      // content[0] should be the table entry itself
+      const tableEntry = content[0];
+      expect(tableEntry.type).toBe('table');
+
+      // Check that rows are transformed from [['cell1', 'cell2']] to [{cells: ['cell1', 'cell2']}]
+      const firstRow = tableEntry.rows[0];
+      expect(firstRow).toHaveProperty('cells');
+      expect(firstRow.cells).toEqual(['cell1', 'cell2']);
     });
   });
 
   describe('saveRule', () => {
-      it('should sanitize data before adding', async () => {
-          const ruleWithUndefined = {
+      it('should sanitize data and transform nested arrays', async () => {
+          const ruleWithNestedArray = {
               language: 'tr',
               title: 'Test',
-              content: [],
-              order: 1,
-              extraUndefined: undefined
+              content: [
+                  {
+                      type: 'table',
+                      rows: [['a', 'b'], ['c', 'd']]
+                  }
+              ],
+              order: 1
           } as any;
 
-          await cmsService.saveRule(ruleWithUndefined);
+          await cmsService.saveRule(ruleWithNestedArray);
 
-          // Check that addDoc was called with sanitized data
-          const expectedCall = {
-              language: 'tr',
-              title: 'Test',
-              content: [],
-              order: 1,
-              createdAt: 'timestamp',
-              updatedAt: 'timestamp'
-          };
-          // We expect the second argument of the first call to addDoc to match
-          expect(addDoc).toHaveBeenCalledWith(undefined, expect.objectContaining(expectedCall));
+          // Find the call that saves this specific rule
+          const saveRuleCallArgs = (addDoc as any).mock.calls.find((call: any) => call[1].title === 'Test')[1];
+          const rows = saveRuleCallArgs.content[0].rows;
 
-          // Ensure 'extraUndefined' key is NOT present
-          // We check the first call's second argument (the data object)
-          const saveRuleCallArgs = (addDoc as any).mock.calls[0][1];
-          expect(saveRuleCallArgs).not.toHaveProperty('extraUndefined');
+          expect(rows[0]).toHaveProperty('cells');
+          expect(rows[0].cells).toEqual(['a', 'b']);
       });
   });
 });

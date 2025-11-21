@@ -9,6 +9,19 @@ interface WeaponFormProps {
   fetchWeapons: () => void;
 }
 
+const DAMAGE_TYPES = [
+    "Bludgeoning (Ezici)", "Piercing (Delici)", "Slashing (Kesici)", "Force (Güç)", "Radiant (Radyant)", "Necrotic (Nekrotik)",
+    "Psychic (Psişik)", "Fire (Ateş)", "Cold (Soğuk)", "Lightning (Yıldırım)", "Thunder (Ses)", "Acid (Asit)", "Poison (Zehir)"
+];
+
+const WEAPON_CATEGORIES = [
+    "Basit Yakın Dövüş", "Basit Menzilli", "Askeri Yakın Dövüş", "Askeri Menzilli"
+];
+
+const DAMAGE_DICE = [
+    "-", "1", "1d4", "1d6", "1d8", "1d10", "1d12", "2d4", "2d6", "2d8", "3d6"
+];
+
 const WeaponForm: React.FC<WeaponFormProps> = ({ editingWeapon, setEditingWeapon, fetchWeapons }) => {
   const handleSave = async () => {
     if (!editingWeapon || !editingWeapon.name) return;
@@ -42,33 +55,42 @@ const WeaponForm: React.FC<WeaponFormProps> = ({ editingWeapon, setEditingWeapon
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Kategori</label>
-                <input
-                    type="text"
+                <select
                     className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
-                    placeholder="Basit Yakın Dövüş"
                     value={editingWeapon?.category || ''}
                     onChange={e => setEditingWeapon({...editingWeapon, category: e.target.value})}
-                />
+                >
+                    <option value="">Seçiniz</option>
+                    {WEAPON_CATEGORIES.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                </select>
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Hasar</label>
-                <input
-                    type="text"
+                <select
                     className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
-                    placeholder="1d8"
                     value={editingWeapon?.damage || ''}
                     onChange={e => setEditingWeapon({...editingWeapon, damage: e.target.value})}
-                />
+                >
+                    <option value="">Seçiniz</option>
+                    {DAMAGE_DICE.map(d => (
+                        <option key={d} value={d}>{d}</option>
+                    ))}
+                </select>
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Hasar Tipi</label>
-                <input
-                    type="text"
+                <select
                     className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
-                    placeholder="kesme"
                     value={editingWeapon?.damageType || ''}
                     onChange={e => setEditingWeapon({...editingWeapon, damageType: e.target.value})}
-                />
+                >
+                    <option value="">Seçiniz</option>
+                    {DAMAGE_TYPES.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                    ))}
+                </select>
             </div>
              <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Maliyet</label>
