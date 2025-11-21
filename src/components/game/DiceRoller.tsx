@@ -1,30 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-  query,
-  orderBy,
-  limit,
-  onSnapshot,
-  Timestamp
-} from 'firebase/firestore';
-import { History as HistoryIcon } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { collection, onSnapshot, addDoc, serverTimestamp, query, orderBy, limit } from 'firebase/firestore';
+import { History as HistoryIcon, Trash2 } from 'lucide-react';
+import { User as FirebaseUser } from 'firebase/auth';
 import { db, appId } from '../../lib/firebase';
-import { useTranslation } from 'react-i18next';
 import { RollLog } from '../../types';
+import { DiceCanvas } from './dice3d/DiceCanvas';
 
 interface DiceRollerProps {
-  user: any;
-  roomCode: string;
+    user: FirebaseUser | null;
+    roomCode: string | null;
 }
 
 export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
-  const { t } = useTranslation();
+  // History State
   const [history, setHistory] = useState<RollLog[]>([]);
-  const [latestRoll, setLatestRoll] = useState<RollLog | null>(null);
-  const [animating, setAnimating] = useState(false);
 
+  // Selection State (e.g. { 20: 2, 6: 1 } means 2d20 + 1d6)
+  const [selection, setSelection] = useState<Record<number, number>>({});
+
+  // 3D Scene State
+  const [activeDice, setActiveDice] = useState<{type: number, id: string}[]>([]);
+  const [isRolling, setIsRolling] = useState(false);
+  const [resultState, setResultState] = useState<{ total: number, details: string } | null>(null);
+
+  // Refs for unmount safety
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+      isMounted.current = true;
+      return () => { isMounted.current = false; };
+  }, []);
+
+  // Fetch History
   useEffect(() => {
     if (!roomCode) return;
 
@@ -36,130 +43,194 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const rolls = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RollLog));
-      setHistory(rolls);
-      if (rolls.length > 0) {
-        const newest = rolls[0];
-        // Check if timestamp exists to prevent errors on optimistic updates or server lag
-        // We cast timestamp to any to access .seconds safely, assuming it follows Firestore Timestamp shape if present
-        const currentTs = newest.timestamp as Timestamp | undefined;
-        const latestTs = latestRoll?.timestamp as Timestamp | undefined;
-
-        if (!latestRoll || (currentTs && latestTs && currentTs.seconds !== latestTs.seconds)) {
-          setLatestRoll(newest);
-        } else if (!latestRoll) {
-           setLatestRoll(newest);
-        }
+      if (isMounted.current) {
+          setHistory(rolls);
       }
     });
 
     return () => unsubscribe();
   }, [roomCode]);
 
-  useEffect(() => {
-    if (latestRoll) {
-      setAnimating(true);
-      const timer = setTimeout(() => setAnimating(false), 1000);
-      return () => clearTimeout(timer);
+  const addToSelection = (sides: number) => {
+    if (isRolling) {
+        clearSelection();
     }
-  }, [latestRoll]);
-
-  const rollDice = async (sides: number) => {
-    if (!user) return;
-    const result = Math.floor(Math.random() * sides) + 1;
-    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', `room_${roomCode}_rolls`), {
-      playerName: user.displayName,
-      uid: user.uid,
-      sides: sides,
-      result: result,
-      timestamp: serverTimestamp(),
-      type: 'dice'
-    });
+    setSelection(prev => ({
+        ...prev,
+        [sides]: (prev[sides] || 0) + 1
+    }));
+    setResultState(null);
   };
 
+  const clearSelection = () => {
+      setSelection({});
+      setActiveDice([]);
+      setResultState(null);
+      setIsRolling(false);
+  };
+
+  const handleRoll = async () => {
+    if (!user || Object.keys(selection).length === 0) return;
+
+    setIsRolling(true);
+    setResultState(null);
+
+    // 1. Generate Dice for 3D view & Calculate Results locally
+    const newDice: {type: number, id: string}[] = [];
+    const results: {sides: number, result: number}[] = [];
+    let total = 0;
+
+    Object.entries(selection).forEach(([sidesStr, count]) => {
+        const sides = parseInt(sidesStr);
+        for (let i = 0; i < count; i++) {
+            newDice.push({ type: sides, id: Math.random().toString(36).substr(2, 9) });
+            const res = Math.floor(Math.random() * sides) + 1;
+            results.push({ sides, result: res });
+            total += res;
+        }
+    });
+
+    // Update 3D view
+    setActiveDice(newDice);
+
+    // 2. Wait for animation (fake delay)
+    setTimeout(async () => {
+        if (!isMounted.current) return;
+
+        const detailsStr = results.map(r => `d${r.sides}: ${r.result}`).join(', ');
+        setResultState({ total, details: detailsStr });
+        setIsRolling(false);
+
+        // 3. Batch write to Firestore
+        // We write each die individually to maintain history granularity compatible with existing types
+        const promises = results.map(r =>
+             addDoc(collection(db, 'artifacts', appId, 'public', 'data', `room_${roomCode}_rolls`), {
+              playerName: user.displayName,
+              uid: user.uid,
+              sides: r.sides,
+              result: r.result,
+              timestamp: serverTimestamp(),
+              type: 'dice'
+            })
+        );
+
+        try {
+            await Promise.all(promises);
+        } catch (error) {
+            console.error("Error saving rolls:", error);
+        }
+
+    }, 2500); // 2.5 seconds for dice to fall
+  };
+
+  const totalSelected = Object.values(selection).reduce((a, b) => a + b, 0);
+
   return (
-    <div className="flex flex-col h-full p-4 space-y-4 overflow-hidden">
-      <div className="flex-1 bg-slate-800 rounded-xl border-2 border-slate-700 flex flex-col items-center justify-center relative overflow-hidden shadow-inner">
-        {latestRoll ? (
-          <div className={`transform transition-all duration-700 ${animating ? 'scale-125 rotate-180 opacity-50' : 'scale-100 rotate-0 opacity-100'}`}>
-            <div className={`
-              w-32 h-32 flex items-center justify-center
-              bg-gradient-to-br from-amber-500 to-amber-700
-              rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.5)]
-              border-4 border-amber-300
-              text-6xl font-black text-white text-shadow
-            `}>
-              {latestRoll.type === 'spell' && latestRoll.damage ? latestRoll.damage : latestRoll.result}
-            </div>
-            <div className="text-center mt-4 text-amber-400 font-bold">
-              {latestRoll.playerName}
-              {latestRoll.type === 'attack' ? ` - ${t('dice.attack')}` : latestRoll.type === 'spell' ? ` - ${latestRoll.spellName}` : ` (d${latestRoll.sides})`}
-            </div>
-            {latestRoll.type === 'attack' && (
-                <div className="text-center text-sm text-slate-300 mt-2 bg-slate-900/50 p-2 rounded">
-                    {latestRoll.isCrit && <span className="text-red-500 font-bold animate-pulse">{t('dice.crit')} </span>}
-                    <span className="block">{t('dice.damage')}: {latestRoll.damage} ({latestRoll.damageType})</span>
-                </div>
-            )}
-            {latestRoll.type === 'spell' && latestRoll.result === 'Büyü Yapıldı' && (
-                <div className="text-center text-sm text-slate-300 mt-2">
-                    {latestRoll.spellType === 'utility' ? t('dice.utility') : t('dice.effect_applied')}
-                </div>
-            )}
+    <div className="flex flex-col h-full relative bg-slate-900">
+      {/* 3D Area - Takes remaining space */}
+      <div className="flex-1 relative bg-slate-800 overflow-hidden rounded-t-xl shadow-inner">
+          {/* Result Overlay */}
+          {resultState && (
+               <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                   <div className="bg-black/70 p-6 rounded-2xl backdrop-blur-md animate-in fade-in zoom-in duration-300 text-center border-2 border-amber-500/50 shadow-2xl">
+                       <div className="text-slate-200 text-lg font-bold mb-2 uppercase tracking-wider">Toplam</div>
+                       <div className="text-7xl font-black text-amber-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]">
+                           {resultState.total}
+                       </div>
+                       <div className="text-slate-400 text-xs mt-4 font-mono bg-black/50 p-2 rounded">
+                           {resultState.details}
+                       </div>
+                   </div>
+               </div>
+          )}
+
+          {/* The Canvas */}
+          <div className="absolute inset-0">
+             <DiceCanvas dice={activeDice} rolling={isRolling} />
           </div>
-        ) : (
-          <div className="text-slate-500">{t('dice.waiting')}</div>
-        )}
-      </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        {[4, 6, 8, 10, 12, 20].map(sides => (
-          <button
-            key={sides}
-            onClick={() => rollDice(sides)}
-            className="bg-slate-700 hover:bg-slate-600 border-b-4 border-slate-900 active:border-b-0 active:translate-y-1 text-white p-3 rounded-lg font-bold transition-all flex items-center justify-center space-x-2"
-          >
-            <span>d{sides}</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="h-48 bg-slate-900 rounded-lg p-2 overflow-y-auto border border-slate-700">
-        <div className="flex items-center text-xs text-slate-400 mb-2 px-1">
-          <HistoryIcon className="w-3 h-3 mr-1" /> {t('dice.last_rolls')}
-        </div>
-        <div className="space-y-2">
-          {history.map((roll) => (
-            <div key={roll.id} className="flex flex-col bg-slate-800 p-2 rounded text-sm border border-slate-700">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-300 font-medium">{roll.playerName}</span>
-                <span className="text-slate-500 text-xs">
-                    {roll.type === 'attack' ? t('dice.attack') : roll.type === 'spell' ? t('dice.spell') : `d${roll.sides}`}
-                </span>
+          {/* Hint if empty */}
+          {activeDice.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center text-slate-600 pointer-events-none select-none">
+                  <div className="text-center opacity-50">
+                      <div className="text-6xl mb-4 animate-bounce">🎲</div>
+                      <p className="text-xl font-light">Zar seç ve at</p>
+                  </div>
               </div>
-              {roll.type === 'attack' ? (
-                  <div className="mt-1 text-xs grid grid-cols-2 gap-2">
-                      <div className="bg-slate-900 p-1 rounded text-center">
-                          <div className="text-slate-500">{t('dice.hit')}</div>
-                          <div className={`font-bold ${roll.result === 20 ? 'text-green-400' : roll.result === 1 ? 'text-red-400' : 'text-white'}`}>
-                              {roll.result} {roll.hitBonus! >= 0 ? `+${roll.hitBonus}` : roll.hitBonus} = <span className="text-amber-400">{Number(roll.result) + parseInt(roll.hitBonus?.toString() || '0')}</span>
-                          </div>
-                      </div>
-                      <div className="bg-slate-900 p-1 rounded text-center">
-                          <div className="text-slate-500">{t('dice.damage')}</div>
-                          <div className="font-bold text-red-400">{roll.damage}</div>
-                      </div>
+          )}
+      </div>
+
+      {/* Controls Area */}
+      <div className="bg-slate-900 p-4 border-t border-slate-800 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+          {/* Selection Summary */}
+          {totalSelected > 0 && (
+              <div className="flex items-center justify-between mb-4 bg-slate-800/50 p-2 rounded-lg border border-slate-700">
+                  <div className="flex flex-wrap gap-2">
+                      {Object.entries(selection).map(([sides, count]) => count > 0 && (
+                          <span key={sides} className="bg-slate-700 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center border border-slate-600">
+                              <span className="text-amber-500 mr-1">{count}</span>
+                              <span>d{sides}</span>
+                          </span>
+                      ))}
                   </div>
-              ) : roll.type === 'spell' ? (
-                  <div className="mt-1 text-xs">
-                      <span className="text-purple-300 font-bold">{roll.spellName}</span>
-                      {roll.damage && <span className="ml-2 text-red-300">{t('dice.damage')}: {roll.damage}</span>}
-                  </div>
-              ) : (
-                  <div className="text-right font-bold text-amber-400">{roll.result}</div>
+                  <button onClick={clearSelection} className="text-red-400 hover:text-red-300 p-2 hover:bg-red-900/20 rounded transition-colors">
+                      <Trash2 size={18} />
+                  </button>
+              </div>
+          )}
+
+          <div className="flex gap-2 items-stretch">
+              {/* Dice Buttons */}
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 flex-1">
+                {[4, 6, 8, 10, 12, 20].map(sides => (
+                  <button
+                    key={sides}
+                    onClick={() => addToSelection(sides)}
+                    className="bg-slate-800 hover:bg-slate-700 border border-slate-600 hover:border-amber-500/50 text-slate-200 p-2 rounded-lg font-bold transition-all flex flex-col items-center justify-center group active:scale-95"
+                  >
+                    <span className="text-xs text-slate-500 group-hover:text-amber-500 uppercase tracking-tighter">d{sides}</span>
+                    <span className="text-xl">{sides}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Roll Button */}
+              {totalSelected > 0 && (
+                  <button
+                    onClick={handleRoll}
+                    disabled={isRolling}
+                    className="bg-gradient-to-br from-amber-600 to-amber-800 hover:from-amber-500 hover:to-amber-700 text-white px-6 rounded-lg font-black text-xl shadow-lg shadow-amber-900/20 transform transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed min-w-[100px] flex flex-col items-center justify-center"
+                  >
+                    {isRolling ? (
+                        <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                        'AT'
+                    )}
+                  </button>
               )}
-            </div>
-          ))}
-        </div>
+          </div>
+      </div>
+
+      {/* Recent History (Collapsible or Small) */}
+      <div className="bg-slate-950 p-2 max-h-32 overflow-y-auto border-t border-slate-900">
+         <div className="flex items-center text-xs text-slate-500 mb-2 sticky top-0 bg-slate-950 py-1 z-10">
+             <HistoryIcon className="w-3 h-3 mr-1" /> Son Atışlar
+         </div>
+         <div className="space-y-1">
+             {history.map((roll) => (
+                 <div key={roll.id} className="flex justify-between items-center text-xs text-slate-400 px-2 py-1 hover:bg-slate-900 rounded transition-colors">
+                     <span className="flex items-center">
+                         <span className="font-medium text-slate-300 mr-2">{roll.playerName}</span>
+                         <span className="text-slate-600">
+                             {roll.type === 'spell' ? roll.spellName : `d${roll.sides}`}
+                         </span>
+                     </span>
+                     <span className={`font-bold font-mono ${roll.type === 'dice' && roll.result === roll.sides ? 'text-green-500' : roll.type === 'dice' && roll.result === 1 ? 'text-red-500' : 'text-amber-500'}`}>
+                        {roll.damage ? roll.damage : roll.result}
+                     </span>
+                 </div>
+             ))}
+         </div>
       </div>
     </div>
   );
