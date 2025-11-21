@@ -38,6 +38,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (currentUser) {
         try {
           await userService.syncUserProfile(currentUser);
+          // Check if banned
+          const profile = await userService.getUserProfile(currentUser.uid);
+          if (profile?.isBanned) {
+              await signOut(auth);
+              setUser(null);
+              setError("Hesabınız yasaklanmıştır.");
+          }
         } catch (err) {
           console.error("Error updating user profile:", err);
           // Don't block auth state on profile update fail

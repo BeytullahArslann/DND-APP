@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { cmsService } from '../../services/cmsService';
 import { SpellDocument, Language } from '../../types/cms';
 import { Save, Trash2, Plus, Edit, X } from 'lucide-react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { SPELL_SCHOOLS, CASTING_TIMES, SPELL_RANGES, DURATIONS, COMPONENTS } from '../../data/spellConstants';
 
 interface SpellFormProps {
   editingSpell: Partial<SpellDocument> | null;
@@ -24,13 +27,13 @@ const SpellForm: React.FC<SpellFormProps> = ({ editingSpell, setEditingSpell, fe
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
+      <div className="bg-gray-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col">
         <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold">{editingSpell?.id ? 'Büyü Düzenle' : 'Yeni Büyü'}</h2>
             <button onClick={() => setEditingSpell(null)} className="text-gray-400 hover:text-white"><X size={24} /></button>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">İsim</label>
                 <input
@@ -50,63 +53,84 @@ const SpellForm: React.FC<SpellFormProps> = ({ editingSpell, setEditingSpell, fe
                 />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Okul (Kısaltma örn: V, S)</label>
-                <input
-                    type="text"
+                <label className="block text-sm font-medium text-gray-400 mb-1">Okul</label>
+                <select
                     className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
                     value={editingSpell?.school || ''}
                     onChange={e => setEditingSpell({...editingSpell, school: e.target.value})}
-                />
+                >
+                    <option value="">Seçiniz</option>
+                    {SPELL_SCHOOLS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Kullanım Süresi</label>
-                <input
-                    type="text"
+                <select
                     className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
                     value={editingSpell?.time || ''}
                     onChange={e => setEditingSpell({...editingSpell, time: e.target.value})}
-                />
+                >
+                    <option value="">Seçiniz</option>
+                    {CASTING_TIMES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
             </div>
              <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Menzil</label>
-                <input
-                    type="text"
+                <select
                     className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
                     value={editingSpell?.range || ''}
                     onChange={e => setEditingSpell({...editingSpell, range: e.target.value})}
-                />
+                >
+                    <option value="">Seçiniz</option>
+                    {SPELL_RANGES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
             </div>
              <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Süre</label>
-                <input
-                    type="text"
+                <select
                     className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
                     value={editingSpell?.duration || ''}
                     onChange={e => setEditingSpell({...editingSpell, duration: e.target.value})}
-                />
+                >
+                    <option value="">Seçiniz</option>
+                    {DURATIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
             </div>
         </div>
 
         <div className="mb-4">
             <label className="block text-sm font-medium text-gray-400 mb-1">Bileşenler</label>
-            <input
-                type="text"
+             <select
                 className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
                 value={editingSpell?.components || ''}
                 onChange={e => setEditingSpell({...editingSpell, components: e.target.value})}
-            />
+            >
+                <option value="">Seçiniz</option>
+                {COMPONENTS.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
         </div>
 
-        <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-400 mb-1">Açıklama (JSON formatında dizi olabilir)</label>
-            <textarea
-                className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white h-32 font-mono text-sm"
-                value={editingSpell?.description || ''}
-                onChange={e => setEditingSpell({...editingSpell, description: e.target.value})}
-            />
+        <div className="flex-1 flex flex-col mb-4 min-h-[300px]">
+            <label className="block text-sm font-medium text-gray-400 mb-1">Açıklama</label>
+            <div className="bg-white text-black rounded h-full">
+                <ReactQuill
+                    theme="snow"
+                    value={editingSpell?.description || ''}
+                    onChange={(content) => setEditingSpell({...editingSpell, description: content})}
+                    className="h-[250px]"
+                    modules={{
+                        toolbar: [
+                            [{ 'header': [1, 2, false] }],
+                            ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+                            [{'list': 'ordered'}, {'list': 'bullet'}],
+                            ['clean']
+                        ],
+                    }}
+                />
+            </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-4">
+        <div className="flex justify-end gap-2 mt-8">
             <button
                 onClick={handleSave}
                 className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded"

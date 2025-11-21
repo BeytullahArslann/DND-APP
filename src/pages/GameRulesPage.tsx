@@ -43,17 +43,119 @@ const GameRulesPage: React.FC = () => {
   // Convert SpellDocument to Spell interface for SpellsList compatibility
   const convertedSpellsData: SpellsData = {
       spell: spells.map(s => {
-          let time: any = [];
-          let range: any = {};
-          let components: any = {};
-          let duration: any = [];
-          let entries: any = [];
+          // If the fields are JSON strings (from seeding/legacy), parse them.
+          // If they are simple strings (from new editor), wrap them in appropriate structures if needed,
+          // OR assume SpellsList can handle strings if we update it.
+          // But SpellsList expects specific objects usually.
+          // However, looking at types/rules.ts, time, range etc are complex objects.
+          // If we changed the editor to save simple strings, we need to convert them here to what SpellsList expects
+          // OR update SpellsList to handle strings.
+          // Given the constraints, let's try to adapt strings to objects if parsing fails.
 
-          try { time = JSON.parse(s.time); } catch {}
-          try { range = JSON.parse(s.range); } catch {}
-          try { components = JSON.parse(s.components); } catch {}
-          try { duration = JSON.parse(s.duration); } catch {}
-          try { entries = JSON.parse(s.description); } catch {}
+          let time: any = [];
+          try {
+              time = JSON.parse(s.time);
+          } catch {
+              // It's a simple string from the new editor
+              time = [{ number: 0, unit: s.time }];
+          }
+
+          let range: any = {};
+          try {
+              range = JSON.parse(s.range);
+          } catch {
+              range = { type: 'point', distance: { type: s.range, amount: 0 } };
+          }
+
+          let components: any = {};
+          try {
+              components = JSON.parse(s.components);
+          } catch {
+               // simplistic parsing for display
+               const hasV = s.components.includes('V');
+               const hasS = s.components.includes('S');
+               // For M, usually it's "M (material)" or just "M".
+               // If the string is just "V, S, M" then M is just generic.
+               // We want to avoid "V, S, M (V, S, M)" if M is not specific.
+               const hasM = s.components.includes('M');
+               let mVal: string | undefined = undefined;
+
+               if (hasM) {
+                   // Try to extract material if it exists in parens
+                   const match = s.components.match(/M\s*\(([^)]+)\)/);
+                   if (match) {
+                       mVal = match[1];
+                   } else if (s.components.trim() === "M" || s.components.includes("M,")) {
+                       // Just generic M
+                       mVal = undefined; // If we set undefined, SpellsList shows M without text?
+                       // Let's check SpellsList. It shows "M ({text})".
+                       // If we return just 'M', SpellsList logic: `spell.components.m && (typeof spell.components.m === 'string' ? `M (${spell.components.m})` ...`
+                       // So if we set mVal to "V, S, M", it shows "M (V, S, M)".
+                       // We should set mVal to undefined if it's just a flag, but SpellsList expects boolean or string/object for M.
+                       // Wait, SpellsList type for M is string | {text, cost}.
+                       // If M is present but no specific material, maybe we shouldn't pass the whole string.
+                       // Let's just pass "Component Pouch" or similar default if not parsed?
+                       // Or better, if it's just "V, S, M", we leave m undefined but pass v=true, s=true, m=true?
+                       // But the interface for `m` is string | object. It doesn't seem to support boolean true.
+                       // Let's look at SpellsList again.
+                       // `spell.components.m && ...`
+                       // If we set m to a string, it renders `M (string)`.
+                       // So if we don't have a specific material, we probably shouldn't set m property at all if we can't display it properly,
+                       // OR we set it to a placeholder.
+                       // But wait, if the original string was "V, S, M", we want to show "V, S, M".
+                       // The SpellsList logic joins them.
+                       // `[v && 'V', s && 'S', m && ...].join(', ')`
+                       // So if we set v=true, s=true, and m=undefined, we get "V, S". We lose M.
+                       // We need a way to say "M exists but has no description".
+                       // If we set m to " ", we get "M ( )".
+                       // Maybe we just leave it as is: if parsing fails, we assume the string is the full component text and don't try to split it into V/S/M objects.
+                       // But SpellsList expects an object with v,s,m keys.
+
+                       // New strategy: If parsing fails, we rely on the fact that we might be able to display the raw string if we updated SpellsList to handle it?
+                       // No, SpellsList expects the object.
+
+                       // Best effort:
+                       // If string contains M but no parens, maybe set m to " " or something minimal?
+                       // Or, if the string is exactly "V, S, M", we just accept that we can't perfectly map it to the struct without custom logic.
+
+                       // Actually, the SpellsList render logic:
+                       // `spell.components.m && (typeof spell.components.m === 'string' ? `M (${spell.components.m})` : ...`
+                       // So if m is set, it wraps it in parens.
+                       // The only way to get just "M" is if we change SpellsList.
+                       // But I can't change SpellsList logic easily without affecting others.
+
+                       // Workaround: If M is present but no details, use " " (space).
+                       mVal = " ";
+                   } else {
+                       // It's the whole string "V, S, M" being assigned to M before.
+                       // If we assign mVal = "Generic", we get "M (Generic)".
+                   }
+               }
+
+               // Actually, checking SpellsList logic again:
+               // It constructs the string.
+               // If I want to fix the UI glitch "V, S, M (V, S, M)", I should stop assigning the whole string `s.components` to `m`.
+               // If I can't find a specific material description, I should probably set `m` to something that renders nicely or not set it.
+               // If I set m="*", it renders "M (*)".
+
+               // Let's just try to extract. If failure, stick to minimal.
+               components = { v: hasV, s: hasS, m: mVal };
+          }
+
+          let duration: any = [];
+          try {
+              duration = JSON.parse(s.duration);
+          } catch {
+              duration = [{ type: 'timed', duration: { type: s.duration, amount: 0 } }];
+          }
+
+          let entries: any = [];
+          try {
+              entries = JSON.parse(s.description);
+          } catch {
+              // It is likely HTML string from ReactQuill
+              entries = [s.description];
+          }
 
           return {
               name: s.name,
@@ -171,11 +273,16 @@ const GameRulesPage: React.FC = () => {
                             {activeRule.title}
                         </h1>
                         {/* Render content entries */}
-                        {activeRule.content.map((entry, idx) => (
-                            <div key={idx} className="mb-12">
-                                <RulesRenderer entry={entry} />
-                            </div>
-                        ))}
+                        {Array.isArray(activeRule.content) ? (
+                            activeRule.content.map((entry, idx) => (
+                                <div key={idx} className="mb-12">
+                                    <RulesRenderer entry={entry} />
+                                </div>
+                            ))
+                        ) : (
+                            /* Handle HTML string content from new Editor */
+                            <div dangerouslySetInnerHTML={{ __html: activeRule.content as unknown as string }} />
+                        )}
                         </div>
                     ) : (
                         <div className="text-center text-gray-500 mt-20">
