@@ -187,4 +187,19 @@ describe('userService', () => {
           expect(mockedArrayUnion).toHaveBeenCalledWith(invite);
       });
   });
+
+  describe('updateProfileData', () => {
+    it('updates user profile using setDoc with merge: true', async () => {
+      const updates = { bio: 'New bio', displayName: 'New Name' };
+      await userService.updateProfileData('user123', updates as any);
+
+      expect(mockedSetDoc).toHaveBeenCalledTimes(1);
+      const callArgs = mockedSetDoc.mock.calls[0];
+      const data = callArgs[1];
+      const options = callArgs[2];
+
+      expect(data).toEqual(updates);
+      expect(options).toEqual({ merge: true });
+    });
+  });
 });

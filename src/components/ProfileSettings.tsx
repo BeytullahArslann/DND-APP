@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from './Modal';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, appId } from '../lib/firebase';
 import { updateProfile } from 'firebase/auth';
+import { userService } from '../services/userService';
+import { UserProfile } from '../types';
 import { User, Upload, Loader2, Globe } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -55,11 +57,10 @@ export const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
           await updateProfile(user, { displayName });
       }
 
-      // Update Firestore User Doc
-      const userRef = doc(db, 'artifacts', appId, 'users', user.uid);
-      await updateDoc(userRef, {
-          displayName,
-          bio
+      // Update Firestore User Doc via userService (handles creation if missing)
+      await userService.updateProfileData(user.uid, {
+        displayName,
+        bio
       });
 
       setUploading(false);
@@ -89,8 +90,7 @@ export const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
           await updateProfile(user, { photoURL: downloadURL });
 
           // Update Firestore
-          const userRef = doc(db, 'artifacts', appId, 'users', user.uid);
-          await updateDoc(userRef, { photoURL: downloadURL });
+          await userService.updateProfileData(user.uid, { photoURL: downloadURL });
 
           setUploading(false);
       } catch (error) {
