@@ -16,3 +16,55 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* Quill Editor Customization */
+.quill {
+  display: flex;
+  flex-direction: column;
+  /* For editors that need to fill height, the parent should set height */
+}
+
+.ql-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Constrain height to parent flex container */
+  background-color: white;
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}
+
+.ql-editor {
+  flex: 1;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.ql-toolbar {
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+  background-color: #f3f4f6; /* gray-100 */
+  border-color: #ccc !important;
+}
+
+.ql-container.ql-snow {
+  border-color: #ccc !important;
+}
+
+/* Scrollbar styling for the editor */
+.ql-editor::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ql-editor::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.ql-editor::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.ql-editor::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
