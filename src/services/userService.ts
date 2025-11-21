@@ -163,5 +163,14 @@ export const userService = {
     await updateDoc(targetUserRef, {
       roomInvites: arrayUnion(invite)
     });
+  },
+
+  /**
+   * Updates specific fields of the user profile.
+   * Uses setDoc with merge: true to ensure document creation if missing.
+   */
+  async updateProfileData(uid: string, data: Partial<UserProfile>): Promise<void> {
+    const userRef = doc(db, 'artifacts', appId, 'users', uid);
+    await setDoc(userRef, data, { merge: true });
   }
 };
