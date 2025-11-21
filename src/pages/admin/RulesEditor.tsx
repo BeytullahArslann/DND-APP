@@ -3,11 +3,97 @@ import { cmsService } from '../../services/cmsService';
 import { RuleDocument, Language } from '../../types/cms';
 import { Save, Trash2, Plus, Edit } from 'lucide-react';
 
+interface EditFormProps {
+  editingRule: Partial<RuleDocument> | null;
+  setEditingRule: (rule: Partial<RuleDocument> | null) => void;
+  fetchRules: () => void;
+}
+
+const EditForm: React.FC<EditFormProps> = ({ editingRule, setEditingRule, fetchRules }) => {
+  const [jsonString, setJsonString] = useState(JSON.stringify(editingRule?.content || [], null, 2));
+  const [jsonError, setJsonError] = useState<string | null>(null);
+
+  // Update local json string if editingRule changes (e.g. initially)
+  useEffect(() => {
+      setJsonString(JSON.stringify(editingRule?.content || [], null, 2));
+  }, [editingRule]);
+
+  const onSave = () => {
+      try {
+          const content = JSON.parse(jsonString);
+          const updatedRule = { ...editingRule, content };
+
+          cmsService.saveRule(updatedRule).then(() => {
+              setEditingRule(null);
+              fetchRules();
+          });
+      } catch (e) {
+          setJsonError("Geçersiz JSON formatı");
+      }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-gray-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <h2 className="text-xl font-bold mb-4">{editingRule?.id ? 'Kural Düzenle' : 'Yeni Kural'}</h2>
+
+            <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-400 mb-1">Başlık</label>
+                <input
+                    type="text"
+                    className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
+                    value={editingRule?.title || ''}
+                    onChange={e => setEditingRule({...editingRule, title: e.target.value})}
+                />
+            </div>
+
+            <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-400 mb-1">Sıra (Order)</label>
+                <input
+                    type="number"
+                    className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
+                    value={editingRule?.order || 0}
+                    onChange={e => setEditingRule({...editingRule, order: Number(e.target.value)})}
+                />
+            </div>
+
+            <div className="flex-1 min-h-0 flex flex-col mb-4">
+                <label className="block text-sm font-medium text-gray-400 mb-1">İçerik (JSON)</label>
+                <p className="text-xs text-gray-500 mb-2">Karmaşık kural yapısı için ham JSON düzenleyici. Dikkatli olun.</p>
+                <textarea
+                    className="flex-1 w-full bg-gray-900 border border-gray-600 rounded p-4 text-sm font-mono text-green-400 resize-none"
+                    value={jsonString}
+                    onChange={e => {
+                        setJsonString(e.target.value);
+                        setJsonError(null);
+                    }}
+                />
+                {jsonError && <p className="text-red-500 text-sm mt-1">{jsonError}</p>}
+            </div>
+
+            <div className="flex justify-end gap-2">
+                <button
+                    onClick={() => setEditingRule(null)}
+                    className="px-4 py-2 text-gray-300 hover:text-white"
+                >
+                    İptal
+                </button>
+                <button
+                    onClick={onSave}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded"
+                >
+                    Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+  );
+};
+
 const RulesEditor: React.FC = () => {
   const [rules, setRules] = useState<RuleDocument[]>([]);
   const [language, setLanguage] = useState<Language>('tr');
   const [editingRule, setEditingRule] = useState<Partial<RuleDocument> | null>(null);
-  const [jsonError, setJsonError] = useState<string | null>(null);
 
   const fetchRules = async () => {
     const data = await cmsService.getRules(language);
@@ -18,111 +104,11 @@ const RulesEditor: React.FC = () => {
     fetchRules();
   }, [language]);
 
-  const handleSave = async () => {
-    if (!editingRule || !editingRule.title) return;
-    try {
-      await cmsService.saveRule(editingRule);
-      setEditingRule(null);
-      fetchRules();
-    } catch (e) {
-      console.error(e);
-      alert('Kaydetme başarısız.');
-    }
-  };
-
   const handleDelete = async (id: string) => {
     if (confirm('Bu kural bölümünü silmek istediğinize emin misiniz?')) {
       await cmsService.deleteRule(id);
       fetchRules();
     }
-  };
-
-  const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    try {
-      const content = JSON.parse(e.target.value);
-      setEditingRule({ ...editingRule, content });
-      setJsonError(null);
-    } catch (err) {
-        // Keep the invalid content in state conceptually? No, just warn.
-        // Actually better to store string state for editing and parse on save.
-    }
-  };
-
-  // Helper component for the edit modal/form
-  const EditForm = () => {
-      const [jsonString, setJsonString] = useState(JSON.stringify(editingRule?.content || [], null, 2));
-
-      const onSave = () => {
-          try {
-              const content = JSON.parse(jsonString);
-              setEditingRule({ ...editingRule, content });
-              // Direct save call from parent state logic won't work cleanly due to async state updates
-              // So we update the editingRule state, and then call save directly with the constructed object
-              cmsService.saveRule({ ...editingRule, content }).then(() => {
-                  setEditingRule(null);
-                  fetchRules();
-              });
-          } catch (e) {
-              setJsonError("Geçersiz JSON formatı");
-          }
-      };
-
-      return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] flex flex-col">
-                <h2 className="text-xl font-bold mb-4">{editingRule?.id ? 'Kural Düzenle' : 'Yeni Kural'}</h2>
-
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Başlık</label>
-                    <input
-                        type="text"
-                        className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
-                        value={editingRule?.title || ''}
-                        onChange={e => setEditingRule({...editingRule, title: e.target.value})}
-                    />
-                </div>
-
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Sıra (Order)</label>
-                    <input
-                        type="number"
-                        className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
-                        value={editingRule?.order || 0}
-                        onChange={e => setEditingRule({...editingRule, order: Number(e.target.value)})}
-                    />
-                </div>
-
-                <div className="flex-1 min-h-0 flex flex-col mb-4">
-                    <label className="block text-sm font-medium text-gray-400 mb-1">İçerik (JSON)</label>
-                    <p className="text-xs text-gray-500 mb-2">Karmaşık kural yapısı için ham JSON düzenleyici. Dikkatli olun.</p>
-                    <textarea
-                        className="flex-1 w-full bg-gray-900 border border-gray-600 rounded p-4 text-sm font-mono text-green-400 resize-none"
-                        value={jsonString}
-                        onChange={e => {
-                            setJsonString(e.target.value);
-                            setJsonError(null);
-                        }}
-                    />
-                    {jsonError && <p className="text-red-500 text-sm mt-1">{jsonError}</p>}
-                </div>
-
-                <div className="flex justify-end gap-2">
-                    <button
-                        onClick={() => setEditingRule(null)}
-                        className="px-4 py-2 text-gray-300 hover:text-white"
-                    >
-                        İptal
-                    </button>
-                    <button
-                        onClick={onSave}
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded"
-                    >
-                        Kaydet
-                    </button>
-                </div>
-            </div>
-        </div>
-      );
   };
 
   return (
@@ -173,7 +159,13 @@ const RulesEditor: React.FC = () => {
         {rules.length === 0 && <p className="text-gray-500 text-center py-10">Kayıtlı kural bulunamadı.</p>}
       </div>
 
-      {editingRule && <EditForm />}
+      {editingRule && (
+          <EditForm
+            editingRule={editingRule}
+            setEditingRule={setEditingRule}
+            fetchRules={fetchRules}
+          />
+      )}
     </div>
   );
 };

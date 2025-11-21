@@ -3,21 +3,13 @@ import { cmsService } from '../../services/cmsService';
 import { WeaponDocument, Language } from '../../types/cms';
 import { Save, Trash2, Plus, Edit, X } from 'lucide-react';
 
-const WeaponsEditor: React.FC = () => {
-  const [weapons, setWeapons] = useState<WeaponDocument[]>([]);
-  const [language, setLanguage] = useState<Language>('tr');
-  const [editingWeapon, setEditingWeapon] = useState<Partial<WeaponDocument> | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+interface WeaponFormProps {
+  editingWeapon: Partial<WeaponDocument> | null;
+  setEditingWeapon: (weapon: Partial<WeaponDocument> | null) => void;
+  fetchWeapons: () => void;
+}
 
-  const fetchWeapons = async () => {
-    const data = await cmsService.getWeapons(language);
-    setWeapons(data);
-  };
-
-  useEffect(() => {
-    fetchWeapons();
-  }, [language]);
-
+const WeaponForm: React.FC<WeaponFormProps> = ({ editingWeapon, setEditingWeapon, fetchWeapons }) => {
   const handleSave = async () => {
     if (!editingWeapon || !editingWeapon.name) return;
     try {
@@ -30,16 +22,7 @@ const WeaponsEditor: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Bu silahı silmek istediğinize emin misiniz?')) {
-      await cmsService.deleteWeapon(id);
-      fetchWeapons();
-    }
-  };
-
-  const filteredWeapons = weapons.filter(w => w.name.toLowerCase().includes(searchTerm.toLowerCase()));
-
-  const WeaponForm = () => (
+  return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl flex flex-col">
         <div className="flex justify-between items-center mb-6">
@@ -128,6 +111,31 @@ const WeaponsEditor: React.FC = () => {
       </div>
     </div>
   );
+};
+
+const WeaponsEditor: React.FC = () => {
+  const [weapons, setWeapons] = useState<WeaponDocument[]>([]);
+  const [language, setLanguage] = useState<Language>('tr');
+  const [editingWeapon, setEditingWeapon] = useState<Partial<WeaponDocument> | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const fetchWeapons = async () => {
+    const data = await cmsService.getWeapons(language);
+    setWeapons(data);
+  };
+
+  useEffect(() => {
+    fetchWeapons();
+  }, [language]);
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Bu silahı silmek istediğinize emin misiniz?')) {
+      await cmsService.deleteWeapon(id);
+      fetchWeapons();
+    }
+  };
+
+  const filteredWeapons = weapons.filter(w => w.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div>
@@ -191,7 +199,13 @@ const WeaponsEditor: React.FC = () => {
         ))}
       </div>
 
-      {editingWeapon && <WeaponForm />}
+      {editingWeapon && (
+        <WeaponForm
+          editingWeapon={editingWeapon}
+          setEditingWeapon={setEditingWeapon}
+          fetchWeapons={fetchWeapons}
+        />
+      )}
     </div>
   );
 };
