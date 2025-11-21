@@ -76,7 +76,7 @@ const EditForm: React.FC<EditFormProps> = ({ editingRule, setEditingRule, fetchR
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-gray-800 rounded-lg p-6 w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="bg-gray-800 rounded-lg p-6 w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
             <h2 className="text-xl font-bold mb-4">{editingRule?.id ? 'Kural Düzenle' : 'Yeni Kural'}</h2>
 
             <div className="mb-4">
