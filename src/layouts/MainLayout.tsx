@@ -7,10 +7,12 @@ import {
   Home,
   MessageSquare,
   User,
-  BookOpen
+  BookOpen,
+  Shield
 } from 'lucide-react';
 import { doc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { db, appId } from '../lib/firebase';
+import { userService } from '../services/userService';
 import { ChatSystem } from '../components/chat/ChatSystem';
 import { ProfileSettings } from '../components/ProfileSettings';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +25,19 @@ export const MainLayout = () => {
   const [userRooms, setUserRooms] = useState<any[]>([]);
   const [showChat, setShowChat] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (user) {
+        const profile = await userService.getUserProfile(user.uid);
+        setIsAdmin(!!profile?.isAdmin);
+      } else {
+        setIsAdmin(false);
+      }
+    };
+    checkAdmin();
+  }, [user]);
 
   // Fetch user's rooms
   useEffect(() => {
@@ -85,6 +100,19 @@ export const MainLayout = () => {
                 Oyun Kuralları
             </div>
         </Link>
+
+        {isAdmin && (
+          <Link
+            to="/admin"
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200 group relative flex-shrink-0
+            ${isActive('/admin') ? 'bg-red-600 text-white rounded-xl shadow-lg shadow-red-900/20' : 'bg-slate-800 text-red-400 hover:bg-red-600 hover:text-white hover:rounded-xl'}`}
+          >
+            <Shield size={24} />
+            <div className="absolute left-14 bg-black px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+              Admin Panel
+            </div>
+          </Link>
+        )}
 
         <div className="w-10 h-0.5 bg-slate-800 rounded-full flex-shrink-0" />
 
@@ -168,6 +196,12 @@ export const MainLayout = () => {
             <Link to="/rules" className={`p-2 rounded-xl ${isActive('/rules') ? 'text-indigo-500' : 'text-slate-400'}`}>
                 <BookOpen size={24} />
             </Link>
+
+            {isAdmin && (
+              <Link to="/admin" className={`p-2 rounded-xl ${isActive('/admin') ? 'text-red-500' : 'text-slate-400'}`}>
+                <Shield size={24} />
+              </Link>
+            )}
 
             <button onClick={() => setShowChat(!showChat)} className={`p-2 rounded-xl ${showChat ? 'text-indigo-500' : 'text-slate-400'}`}>
                 <MessageSquare size={24} />
