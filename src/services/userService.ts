@@ -13,7 +13,7 @@ import {
   limit
 } from 'firebase/firestore';
 import { User } from 'firebase/auth';
-import { db, appId } from '../lib/firebase';
+import { db, appId, usingDemoConfig } from '../lib/firebase';
 import { UserProfile, RoomInvite } from '../types';
 
 export const userService = {
@@ -21,6 +21,11 @@ export const userService = {
    * Creates or updates the user profile in Firestore upon login.
    */
   async syncUserProfile(user: User): Promise<void> {
+    if (usingDemoConfig) {
+      console.warn('Using demo config: Skipping Firestore user sync.');
+      return;
+    }
+
     const userRef = doc(db, 'artifacts', appId, 'users', user.uid);
     const userSnap = await getDoc(userRef);
 
@@ -84,6 +89,18 @@ export const userService = {
    * Fetches a user profile by UID.
    */
   async getUserProfile(uid: string): Promise<UserProfile | null> {
+    if (usingDemoConfig) {
+        return {
+            uid,
+            displayName: 'Demo User',
+            email: 'demo@example.com',
+            photoURL: null,
+            friends: [],
+            rooms: [],
+            isAdmin: true // Always admin in demo mode
+        };
+    }
+
     const userRef = doc(db, 'artifacts', appId, 'users', uid);
     const snap = await getDoc(userRef);
     if (snap.exists()) {
@@ -96,6 +113,8 @@ export const userService = {
    * Finds a user by email.
    */
   async getUserByEmail(email: string): Promise<UserProfile | null> {
+      if (usingDemoConfig) return null;
+
       const q = query(collection(db, 'artifacts', appId, 'users'), where('email', '==', email));
       const snap = await getDocs(q);
       if (snap.empty) return null;
@@ -106,6 +125,18 @@ export const userService = {
    * Fetches all users (Admin only - ideally protected by Firestore rules)
    */
   async getAllUsers(): Promise<UserProfile[]> {
+    if (usingDemoConfig) {
+        return [{
+            uid: 'demo-uid',
+            displayName: 'Demo User',
+            email: 'demo@example.com',
+            photoURL: null,
+            friends: [],
+            rooms: [],
+            isAdmin: true
+        }];
+    }
+
     const snap = await getDocs(collection(db, 'artifacts', appId, 'users'));
     return snap.docs.map(doc => doc.data() as UserProfile);
   },

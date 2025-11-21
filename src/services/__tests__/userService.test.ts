@@ -2,6 +2,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { userService } from '../userService';
 import { getDoc, setDoc, query, getDocs, updateDoc, arrayUnion } from 'firebase/firestore';
 
+// Mock firebase lib configuration to disable demo mode for tests
+vi.mock('../../lib/firebase', () => ({
+  db: {},
+  appId: 'test-app',
+  usingDemoConfig: false
+}));
+
 // Mocks are already set up in setupTests.ts, but we need to type them for usage
 const mockedGetDoc = vi.mocked(getDoc);
 const mockedSetDoc = vi.mocked(setDoc);
