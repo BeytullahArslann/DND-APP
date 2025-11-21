@@ -18,37 +18,45 @@ a {
 }
 
 /* Quill Editor Customization */
+/* We use !important to ensure these styles override the default Quill theme styles */
+
 .quill {
-  display: flex;
-  flex-direction: column;
-  /* For editors that need to fill height, the parent should set height */
+  display: flex !important;
+  flex-direction: column !important;
+  /* Height is inherited from parent or set via className */
 }
 
 .ql-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden; /* Constrain height to parent flex container */
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  height: auto !important; /* Let flexbox manage height */
+  overflow: hidden !important; /* Prevent container from expanding beyond parent */
   background-color: white;
   border-bottom-left-radius: 0.5rem;
   border-bottom-right-radius: 0.5rem;
 }
 
+/* Fix for ql-snow theme adding specific borders/heights */
+.ql-container.ql-snow {
+  border: none !important;
+}
+
 .ql-editor {
-  flex: 1;
-  overflow-y: auto;
-  height: 100%;
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  height: auto !important;
+  min-height: 0 !important; /* Essential for nested flex scrolling */
+  padding-bottom: 1rem !important; /* Add some breathing room at bottom */
 }
 
 .ql-toolbar {
+  flex: 0 0 auto !important; /* Toolbar should not shrink/grow */
   border-top-left-radius: 0.5rem;
   border-top-right-radius: 0.5rem;
   background-color: #f3f4f6; /* gray-100 */
   border-color: #ccc !important;
-}
-
-.ql-container.ql-snow {
-  border-color: #ccc !important;
+  border-bottom: 1px solid #e5e7eb !important;
 }
 
 /* Scrollbar styling for the editor */
