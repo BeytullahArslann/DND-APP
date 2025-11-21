@@ -11,17 +11,28 @@ const spellsData = spellsDataRaw as unknown as SpellsData;
 
 const GameRulesPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'rules' | 'spells'>('rules');
-  const [activeChapterName, setActiveChapterName] = useState<string>(rulesData.reference[0].contents[0].name);
+  const [activeChapterName, setActiveChapterName] = useState<string>(
+    rulesData?.reference?.[0]?.contents?.[0]?.name || ''
+  );
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   // Flatten sections for easier navigation menu
-  const chapters = rulesData.reference[0].contents;
+  const chapters = rulesData?.reference?.[0]?.contents || [];
 
   // Find the active chapter object to get its headers
   const activeChapter = chapters.find(c => c.name === activeChapterName);
 
-  // Flatten all data entries from all sections
-  const allEntries = rulesData.data.flatMap(d => d.entries || []);
+  // Flatten all data entries from all sections safely
+  // Using reduce for maximum compatibility and safety
+  const allEntries = React.useMemo(() => {
+      if (!rulesData?.data || !Array.isArray(rulesData.data)) return [];
+      return rulesData.data.reduce((acc: any[], d: any) => {
+          if (d && d.entries && Array.isArray(d.entries)) {
+              return acc.concat(d.entries);
+          }
+          return acc;
+      }, []);
+  }, []);
 
   // Filter the data entries that match the headers of the active chapter
   const activeEntries = activeChapter
