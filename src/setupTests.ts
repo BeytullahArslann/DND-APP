@@ -27,6 +27,8 @@ vi.mock('firebase/firestore', () => ({
   deleteDoc: vi.fn(),
   query: vi.fn(),
   where: vi.fn(),
+  limit: vi.fn(),
+  orderBy: vi.fn(),
   onSnapshot: vi.fn(),
   serverTimestamp: vi.fn(() => 'MOCKED_TIMESTAMP'),
   arrayUnion: vi.fn((val) => ({ arrayUnion: val })),
