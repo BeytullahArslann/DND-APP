@@ -97,6 +97,7 @@ export interface UserProfile {
   rooms: string[]; // List of Room IDs
   roomInvites?: RoomInvite[];
   isAdmin?: boolean;
+  bio?: string;
 }
 
 export interface Room {

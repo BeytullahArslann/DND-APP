@@ -3,21 +3,13 @@ import { cmsService } from '../../services/cmsService';
 import { SpellDocument, Language } from '../../types/cms';
 import { Save, Trash2, Plus, Edit, X } from 'lucide-react';
 
-const SpellsEditor: React.FC = () => {
-  const [spells, setSpells] = useState<SpellDocument[]>([]);
-  const [language, setLanguage] = useState<Language>('tr');
-  const [editingSpell, setEditingSpell] = useState<Partial<SpellDocument> | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+interface SpellFormProps {
+  editingSpell: Partial<SpellDocument> | null;
+  setEditingSpell: (spell: Partial<SpellDocument> | null) => void;
+  fetchSpells: () => void;
+}
 
-  const fetchSpells = async () => {
-    const data = await cmsService.getSpells(language);
-    setSpells(data);
-  };
-
-  useEffect(() => {
-    fetchSpells();
-  }, [language]);
-
+const SpellForm: React.FC<SpellFormProps> = ({ editingSpell, setEditingSpell, fetchSpells }) => {
   const handleSave = async () => {
     if (!editingSpell || !editingSpell.name) return;
     try {
@@ -30,16 +22,7 @@ const SpellsEditor: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Bu büyüyü silmek istediğinize emin misiniz?')) {
-      await cmsService.deleteSpell(id);
-      fetchSpells();
-    }
-  };
-
-  const filteredSpells = spells.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
-
-  const SpellForm = () => (
+  return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
         <div className="flex justify-between items-center mb-6">
@@ -134,6 +117,31 @@ const SpellsEditor: React.FC = () => {
       </div>
     </div>
   );
+};
+
+const SpellsEditor: React.FC = () => {
+  const [spells, setSpells] = useState<SpellDocument[]>([]);
+  const [language, setLanguage] = useState<Language>('tr');
+  const [editingSpell, setEditingSpell] = useState<Partial<SpellDocument> | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const fetchSpells = async () => {
+    const data = await cmsService.getSpells(language);
+    setSpells(data);
+  };
+
+  useEffect(() => {
+    fetchSpells();
+  }, [language]);
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Bu büyüyü silmek istediğinize emin misiniz?')) {
+      await cmsService.deleteSpell(id);
+      fetchSpells();
+    }
+  };
+
+  const filteredSpells = spells.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div>
@@ -192,7 +200,13 @@ const SpellsEditor: React.FC = () => {
         ))}
       </div>
 
-      {editingSpell && <SpellForm />}
+      {editingSpell && (
+        <SpellForm
+          editingSpell={editingSpell}
+          setEditingSpell={setEditingSpell}
+          fetchSpells={fetchSpells}
+        />
+      )}
     </div>
   );
 };

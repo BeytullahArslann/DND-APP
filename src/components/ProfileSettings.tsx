@@ -17,9 +17,31 @@ export const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
   const [displayName, setDisplayName] = useState(user?.displayName || '');
-  const [bio, setBio] = useState(''); // Would need to fetch current bio from Firestore first
+  const [bio, setBio] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch existing bio when modal opens
+  React.useEffect(() => {
+      if (isOpen && user) {
+          const fetchProfile = async () => {
+              try {
+                  const userRef = doc(db, 'artifacts', appId, 'users', user.uid);
+                  const snap = await getDoc(userRef);
+                  if (snap.exists()) {
+                      const data = snap.data() as UserProfile;
+                      setBio(data.bio || '');
+                      // Also update display name from firestore if needed,
+                      // but auth profile is usually source of truth for name initially
+                      if (data.displayName) setDisplayName(data.displayName);
+                  }
+              } catch (err) {
+                  console.error("Error fetching profile:", err);
+              }
+          };
+          fetchProfile();
+      }
+  }, [isOpen, user]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

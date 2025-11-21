@@ -26,6 +26,8 @@ export const userService = {
       return;
     }
 
+    console.log(`Syncing user profile for ${user.uid} (${user.email}) in app ${appId}`);
+
     const userRef = doc(db, 'artifacts', appId, 'users', user.uid);
     const userSnap = await getDoc(userRef);
 
