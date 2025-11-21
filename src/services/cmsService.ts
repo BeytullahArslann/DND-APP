@@ -10,13 +10,15 @@ import {
   query,
   where,
   orderBy,
-  serverTimestamp
+  serverTimestamp,
+  writeBatch
 } from 'firebase/firestore';
 import { db, appId } from '../lib/firebase';
 import { RuleDocument, SpellDocument, WeaponDocument, Language } from '../types/cms';
 import rulesDataRaw from '../data/rules.json';
 import spellsDataRaw from '../data/spells.json';
 import { QuickReferenceData, SpellsData } from '../types/rules';
+import { convertRulesToHtml, normalizeSpellData } from '../utils/dataConverters';
 
 const RULES_COLLECTION = `artifacts/${appId}/rules`;
 const SPELLS_COLLECTION = `artifacts/${appId}/spells`;
@@ -36,9 +38,7 @@ const sanitizeData = (data: any) => {
 
 const sanitizeForFirestore = (obj: any): any => {
   if (Array.isArray(obj)) {
-    // Check if it's a nested array (array of arrays)
     if (obj.length > 0 && Array.isArray(obj[0])) {
-      // Transform to object wrapper
       return obj.map(item => ({ cells: sanitizeForFirestore(item) }));
     }
     return obj.map(sanitizeForFirestore);
@@ -140,16 +140,43 @@ export const cmsService = {
   },
 
   // --- Seeding ---
+  async resetAndSeedDatabase() {
+    console.log("Resetting and seeding database...");
+
+    // Helper to delete all documents in a collection
+    const deleteCollection = async (collectionPath: string) => {
+      const q = query(collection(db, collectionPath));
+      const snapshot = await getDocs(q);
+      const batchSize = 500;
+      let batch = writeBatch(db);
+      let count = 0;
+
+      for (const doc of snapshot.docs) {
+        batch.delete(doc.ref);
+        count++;
+        if (count >= batchSize) {
+          await batch.commit();
+          batch = writeBatch(db);
+          count = 0;
+        }
+      }
+      if (count > 0) {
+        await batch.commit();
+      }
+    };
+
+    await deleteCollection(RULES_COLLECTION);
+    await deleteCollection(SPELLS_COLLECTION);
+    // await deleteCollection(WEAPONS_COLLECTION); // Optional, if we had weapons seed data
+
+    await this.seedDatabase();
+    console.log("Database reset and seeded.");
+  },
+
   async seedDatabase() {
     console.log("Seeding database...");
+
     // 1. Seed Rules (TR)
-    // The structure of rules.json is complex. We'll try to map sections.
-    // rulesData.reference[0].contents has sections like "Karakter Yaratma".
-    // rulesData.data[0].entries contains the actual content.
-
-    // This is a best-effort mapping because the JSON structure is flattened in 'data'.
-    // We will take the 'reference' sections and try to find matching entries in 'data'.
-
     const sections = rulesData.reference[0].contents;
     // Flatten all data entries to search within them
     const allEntries = rulesData.data.reduce((acc: any[], d: any) => {
@@ -160,67 +187,61 @@ export const cmsService = {
     }, []);
 
     let order = 0;
+    let batch = writeBatch(db);
+    let opCount = 0;
+
     for (const section of sections) {
-      // Find entries that match the headers in this section
       const sectionContent = allEntries.filter(entry =>
         typeof entry !== 'string' && entry.name && section.headers.includes(entry.name)
       );
 
       if (sectionContent.length > 0) {
+        // Convert content to HTML using the converter
+        const htmlContent = convertRulesToHtml(sectionContent);
+
+        const ruleDocRef = doc(collection(db, RULES_COLLECTION));
         const ruleDoc: Omit<RuleDocument, 'id'> = {
           language: 'tr',
           title: section.name,
-          content: sanitizeForFirestore(sectionContent),
+          content: htmlContent, // Now string (HTML)
           order: order++,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         };
 
-        // Check if exists to avoid duplicates during dev
-        const q = query(collection(db, RULES_COLLECTION), where('title', '==', section.name), where('language', '==', 'tr'));
-        const snap = await getDocs(q);
-        if (snap.empty) {
-           await addDoc(collection(db, RULES_COLLECTION), ruleDoc);
-           console.log(`Added rule section: ${section.name}`);
-        } else {
-            console.log(`Skipped rule section: ${section.name} (Already exists)`);
-        }
+        batch.set(ruleDocRef, ruleDoc);
+        opCount++;
+        if (opCount >= 400) { await batch.commit(); batch = writeBatch(db); opCount = 0; }
       }
     }
 
     // 2. Seed Spells (TR)
-    // Assuming spells.json is mixed or English, but user interface shows Turkish names in parenthesis often.
-    // Let's treat them as 'tr' for now since the user said "coklu dil destegi olsun" implying current might be TR or Mixed.
-    // Looking at the file content read earlier: "Acid Splash (Asit Sıçraması)" -> It's bilingual titles.
-    // We will save them as 'tr' primarily.
-
     for (const spell of spellsData.spell) {
-        // Convert complex objects to string representations for the simple CMS fields for now
-        // or keep them as is? The SpellDocument interface uses strings for simplicity in editing.
-        // Let's try to format them nicely.
+        const normalizedSpell = normalizeSpellData(spell);
 
+        const spellDocRef = doc(collection(db, SPELLS_COLLECTION));
         const spellDoc: Omit<SpellDocument, 'id'> = {
             language: 'tr',
-            name: spell.name,
-            level: spell.level,
-            school: spell.school,
-            time: JSON.stringify(spell.time), // Keep raw for now or format? raw is safer.
-            range: JSON.stringify(spell.range),
-            components: JSON.stringify(spell.components),
-            duration: JSON.stringify(spell.duration),
-            description: JSON.stringify(spell.entries),
-            classes: spell.classes?.fromClassList?.map(c => c.name) || [],
+            name: normalizedSpell.name,
+            level: normalizedSpell.level,
+            school: normalizedSpell.school,
+            time: normalizedSpell.time,
+            range: normalizedSpell.range,
+            components: normalizedSpell.components,
+            duration: normalizedSpell.duration,
+            description: normalizedSpell.description,
+            classes: normalizedSpell.classes?.fromClassList?.map((c: any) => c.name) || [],
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
         };
 
-        const q = query(collection(db, SPELLS_COLLECTION), where('name', '==', spell.name), where('language', '==', 'tr'));
-        const snap = await getDocs(q);
-        if (snap.empty) {
-            await addDoc(collection(db, SPELLS_COLLECTION), spellDoc);
-            console.log(`Added spell: ${spell.name}`);
-        }
-        // We don't log every skipped spell to avoid spamming
+        batch.set(spellDocRef, spellDoc);
+        opCount++;
+        if (opCount >= 400) { await batch.commit(); batch = writeBatch(db); opCount = 0; }
+    }
+
+    if (opCount > 0) {
+        await batch.commit();
     }
 
     console.log("Seeding complete.");

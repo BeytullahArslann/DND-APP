@@ -1,12 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { cmsService } from '../cmsService';
-import { addDoc, collection, getDocs } from 'firebase/firestore';
+import { addDoc, getDocs } from 'firebase/firestore';
 
 // Mock Firebase
 vi.mock('../lib/firebase', () => ({
   db: {},
   appId: 'test-app'
 }));
+
+const mockBatch = {
+  set: vi.fn(),
+  commit: vi.fn(),
+  update: vi.fn(),
+  delete: vi.fn()
+};
 
 // Mock Firestore
 vi.mock('firebase/firestore', () => ({
@@ -16,12 +23,14 @@ vi.mock('firebase/firestore', () => ({
   getDocs: vi.fn(),
   getDoc: vi.fn(),
   addDoc: vi.fn(),
+  setDoc: vi.fn(),
   updateDoc: vi.fn(),
   deleteDoc: vi.fn(),
   query: vi.fn(),
   where: vi.fn(),
   orderBy: vi.fn(),
   serverTimestamp: vi.fn(() => 'timestamp'),
+  writeBatch: vi.fn(() => mockBatch)
 }));
 
 // Mock Data - Correct paths relative to this test file
@@ -60,24 +69,20 @@ describe('cmsService', () => {
   });
 
   describe('seedDatabase', () => {
-    it('should transform nested arrays in rules data', async () => {
+    it('should convert content to HTML string using batch operations', async () => {
       await cmsService.seedDatabase();
 
-      // Verify addDoc was called
-      expect(addDoc).toHaveBeenCalled();
+      // Verify batch.set was called instead of addDoc for seeding
+      expect(mockBatch.set).toHaveBeenCalled();
 
-      // Get the argument passed to addDoc for the rule
-      const callArgs = (addDoc as any).mock.calls[0][1];
+      // Get the argument passed to batch.set for the rule
+      const callArgs = mockBatch.set.mock.calls[0][1];
       const content = callArgs.content;
 
-      // content[0] should be the table entry itself
-      const tableEntry = content[0];
-      expect(tableEntry.type).toBe('table');
-
-      // Check that rows are transformed from [['cell1', 'cell2']] to [{cells: ['cell1', 'cell2']}]
-      const firstRow = tableEntry.rows[0];
-      expect(firstRow).toHaveProperty('cells');
-      expect(firstRow.cells).toEqual(['cell1', 'cell2']);
+      // content should now be an HTML string
+      expect(typeof content).toBe('string');
+      expect(content).toContain('<table');
+      expect(content).toContain('cell1');
     });
   });
 

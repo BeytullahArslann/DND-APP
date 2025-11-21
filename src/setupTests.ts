@@ -32,6 +32,12 @@ vi.mock('firebase/firestore', () => ({
   onSnapshot: vi.fn(),
   serverTimestamp: vi.fn(() => 'MOCKED_TIMESTAMP'),
   arrayUnion: vi.fn((val) => ({ arrayUnion: val })),
+  writeBatch: vi.fn(() => ({
+    set: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    commit: vi.fn(),
+  })),
   Timestamp: {
     now: vi.fn(() => ({ toDate: () => new Date(), toMillis: () => Date.now() })),
     fromDate: vi.fn((date) => ({ toDate: () => date, toMillis: () => date.getTime() })),
