@@ -44,10 +44,11 @@ a {
 
 .ql-editor {
   flex: 1 1 auto !important;
-  overflow-y: auto !important;
-  height: auto !important;
+  height: 100% !important; /* Force editor to fit container height */
+  overflow-y: auto !important; /* Enable internal scrolling */
   min-height: 0 !important; /* Essential for nested flex scrolling */
   padding-bottom: 1rem !important;
+  overscroll-behavior: contain !important; /* Prevent scroll chaining to parent */
 
   /* Scrollbar Visibility improvements */
   scrollbar-width: auto !important; /* Firefox: show scrollbar */
