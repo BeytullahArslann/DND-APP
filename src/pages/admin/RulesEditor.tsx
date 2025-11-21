@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { cmsService } from '../../services/cmsService';
 import { RuleDocument, Language } from '../../types/cms';
 import { Save, Trash2, Plus, Edit, GripVertical } from 'lucide-react';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import RichTextEditor from '../../components/RichTextEditor';
 import {
     DndContext,
     closestCenter,
@@ -119,23 +118,11 @@ const EditForm: React.FC<EditFormProps> = ({ editingRule, setEditingRule, fetchR
                         {jsonError && <p className="text-red-500 text-sm mt-1">{jsonError}</p>}
                     </>
                 ) : (
-                    <div className="bg-white text-black rounded h-full overflow-hidden flex flex-col">
-                         <ReactQuill
-                            theme="snow"
-                            value={typeof content === 'string' ? content : ''}
-                            onChange={setContent}
-                            className="h-full flex-1 flex flex-col ql-container-full"
-                            modules={{
-                                toolbar: [
-                                    [{ 'header': [1, 2, 3, false] }],
-                                    ['bold', 'italic', 'underline', 'strike', 'blockquote'],
-                                    [{'list': 'ordered'}, {'list': 'bullet'}],
-                                    ['link', 'image'],
-                                    ['clean']
-                                ],
-                            }}
-                        />
-                    </div>
+                    <RichTextEditor
+                        value={typeof content === 'string' ? content : ''}
+                        onChange={setContent}
+                        className="h-full"
+                    />
                 )}
             </div>
 
