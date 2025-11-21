@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { userService } from '../services/userService';
+import { usingDemoConfig } from '../lib/firebase';
 import { LayoutDashboard, Book, Sparkles, Sword, Users, Home, LogOut } from 'lucide-react';
 
 const AdminLayout: React.FC = () => {
@@ -12,6 +13,12 @@ const AdminLayout: React.FC = () => {
 
   useEffect(() => {
     const checkAdmin = async () => {
+      if (usingDemoConfig) {
+          setIsAdmin(true);
+          setChecking(false);
+          return;
+      }
+
       if (user) {
         const profile = await userService.getUserProfile(user.uid);
         setIsAdmin(!!profile?.isAdmin);
