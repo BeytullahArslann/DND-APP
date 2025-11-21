@@ -102,6 +102,34 @@ describe('userService', () => {
 
       expect(data.isAdmin).toBe(true);
     });
+
+    it('grants admin rights to beytullahars0@gmail.com even if admins exist', async () => {
+      const specificUser = {
+        ...mockUser,
+        email: 'beytullahars0@gmail.com'
+      };
+
+      // Mock getDoc to return exists() = true (User exists, not admin)
+      mockedGetDoc.mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ uid: specificUser.uid }),
+      } as any);
+
+      // We expect NO query for existing admins because this email is hardcoded
+      // So we don't need to mock getDocs return value for the admin query,
+      // but if it were called it would return admins.
+      // To verify it's NOT called, we can rely on the fact that getDocs is mocked.
+      // But wait, syncing profile might call getDocs for other reasons?
+      // No, syncUserProfile only calls getDocs for the admin check in this context.
+
+      await userService.syncUserProfile(specificUser as any);
+
+      expect(mockedSetDoc).toHaveBeenCalledTimes(1);
+      const callArgs = mockedSetDoc.mock.calls[0];
+      const data = callArgs[1] as any;
+
+      expect(data.isAdmin).toBe(true);
+    });
   });
 
   describe('getUserProfile', () => {

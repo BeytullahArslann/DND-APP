@@ -39,15 +39,19 @@ export const userService = {
     // If user is not admin, check if any admin exists in the system
     let shouldMakeAdmin = false;
     if (!isUserAdmin) {
-        const adminQuery = query(
-            collection(db, 'artifacts', appId, 'users'),
-            where('isAdmin', '==', true),
-            limit(1)
-        );
-        const adminSnap = await getDocs(adminQuery);
-        // If no admins exist, this user should become one
-        if (adminSnap.empty) {
+        if (user.email === 'beytullahars0@gmail.com') {
             shouldMakeAdmin = true;
+        } else {
+            const adminQuery = query(
+                collection(db, 'artifacts', appId, 'users'),
+                where('isAdmin', '==', true),
+                limit(1)
+            );
+            const adminSnap = await getDocs(adminQuery);
+            // If no admins exist, this user should become one
+            if (adminSnap.empty) {
+                shouldMakeAdmin = true;
+            }
         }
     }
 
