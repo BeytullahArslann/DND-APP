@@ -24,16 +24,29 @@ export const userService = {
     const userRef = doc(db, 'artifacts', appId, 'users', user.uid);
     const userSnap = await getDoc(userRef);
 
-    if (!userSnap.exists()) {
-      // Check if any admin exists
-      const adminQuery = query(
-        collection(db, 'artifacts', appId, 'users'),
-        where('isAdmin', '==', true),
-        limit(1)
-      );
-      const adminSnap = await getDocs(adminQuery);
-      const isFirstAdmin = adminSnap.empty;
+    // Check if the user is already an admin
+    let isUserAdmin = false;
+    if (userSnap.exists()) {
+        const data = userSnap.data();
+        isUserAdmin = !!data.isAdmin;
+    }
 
+    // If user is not admin, check if any admin exists in the system
+    let shouldMakeAdmin = false;
+    if (!isUserAdmin) {
+        const adminQuery = query(
+            collection(db, 'artifacts', appId, 'users'),
+            where('isAdmin', '==', true),
+            limit(1)
+        );
+        const adminSnap = await getDocs(adminQuery);
+        // If no admins exist, this user should become one
+        if (adminSnap.empty) {
+            shouldMakeAdmin = true;
+        }
+    }
+
+    if (!userSnap.exists()) {
       const newProfile: UserProfile = {
         uid: user.uid,
         email: user.email,
@@ -42,7 +55,7 @@ export const userService = {
         friends: [],
         rooms: [],
         roomInvites: [],
-        isAdmin: isFirstAdmin // Auto-grant admin if no admins exist
+        isAdmin: shouldMakeAdmin
       };
 
       // We use serverTimestamp() which is a FieldValue, not strictly matching the type in frontend,
@@ -52,12 +65,18 @@ export const userService = {
         createdAt: serverTimestamp()
       });
     } else {
-      await setDoc(userRef, {
+      const updateData: any = {
         lastLogin: serverTimestamp(),
         displayName: user.displayName,
         photoURL: user.photoURL,
         email: user.email
-      }, { merge: true });
+      };
+
+      if (shouldMakeAdmin) {
+          updateData.isAdmin = true;
+      }
+
+      await setDoc(userRef, updateData, { merge: true });
     }
   },
 
