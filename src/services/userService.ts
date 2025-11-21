@@ -73,6 +73,22 @@ export const userService = {
   },
 
   /**
+   * Fetches all users (Admin only - ideally protected by Firestore rules)
+   */
+  async getAllUsers(): Promise<UserProfile[]> {
+    const snap = await getDocs(collection(db, 'artifacts', appId, 'users'));
+    return snap.docs.map(doc => doc.data() as UserProfile);
+  },
+
+  /**
+   * Toggles admin status for a user.
+   */
+  async toggleAdminStatus(uid: string, isAdmin: boolean): Promise<void> {
+    const userRef = doc(db, 'artifacts', appId, 'users', uid);
+    await updateDoc(userRef, { isAdmin });
+  },
+
+  /**
    * Sends a room invite to a user.
    */
   async sendRoomInvite(targetUid: string, invite: RoomInvite): Promise<void> {
