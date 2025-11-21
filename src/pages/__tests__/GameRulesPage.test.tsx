@@ -17,7 +17,7 @@ vi.mock('../../data/rules.json', () => ({
       {
         entries: [
             {
-                name: "Test Section",
+                name: "Header 1",
                 type: "entries",
                 entries: ["This is a rule text.", { type: "section", name: "Subsection", entries: ["Sub text"] }]
             }
