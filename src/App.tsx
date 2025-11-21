@@ -6,6 +6,7 @@ import { MainLayout } from './layouts/MainLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { RoomPage } from './pages/RoomPage';
+import GameRulesPage from './pages/GameRulesPage';
 import { ErrorPage } from './pages/ErrorPage';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -31,6 +32,13 @@ const router = createBrowserRouter([
     children: [
       { path: '', element: <DashboardPage /> },
       { path: 'room/:roomId', element: <RoomPage /> }
+    ]
+  },
+  {
+    path: '/rules',
+    element: <MainLayout />,
+    children: [
+      { path: '', element: <GameRulesPage /> }
     ]
   },
   {
