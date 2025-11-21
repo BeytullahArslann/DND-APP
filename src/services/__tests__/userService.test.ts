@@ -49,11 +49,17 @@ describe('userService', () => {
       expect(data.isAdmin).toBe(true); // First user should be admin
     });
 
-    it('updates existing profile on login', async () => {
-      // Mock getDoc to return exists() = true
+    it('updates existing profile on login and does not grant admin if admin exists', async () => {
+      // Mock getDoc to return exists() = true (User exists, not admin)
       mockedGetDoc.mockResolvedValueOnce({
         exists: () => true,
         data: () => ({ uid: 'user123' }),
+      } as any);
+
+      // Mock getDocs for admin check (return not empty -> admin exists)
+      mockedGetDocs.mockResolvedValueOnce({
+        empty: false,
+        docs: [{ data: () => ({ uid: 'admin1' }) }]
       } as any);
 
       await userService.syncUserProfile(mockUser as any);
@@ -64,7 +70,30 @@ describe('userService', () => {
       const options = callArgs[2];
 
       expect(data.lastLogin).toBe('MOCKED_TIMESTAMP');
+      expect(data.isAdmin).toBeUndefined(); // Should not be set
       expect(options).toEqual({ merge: true });
+    });
+
+    it('updates existing profile and grants admin if no admin exists', async () => {
+      // Mock getDoc to return exists() = true (User exists, not admin)
+      mockedGetDoc.mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ uid: 'user123' }),
+      } as any);
+
+      // Mock getDocs for admin check (return empty -> no admins)
+      mockedGetDocs.mockResolvedValueOnce({
+        empty: true,
+        docs: []
+      } as any);
+
+      await userService.syncUserProfile(mockUser as any);
+
+      expect(mockedSetDoc).toHaveBeenCalledTimes(1);
+      const callArgs = mockedSetDoc.mock.calls[0];
+      const data = callArgs[1] as any;
+
+      expect(data.isAdmin).toBe(true);
     });
   });
 
