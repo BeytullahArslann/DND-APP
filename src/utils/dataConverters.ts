@@ -6,7 +6,7 @@ interface RuleEntry {
   items?: string[];
   caption?: string;
   colLabels?: string[];
-  rows?: string[][];
+  rows?: (string[] | { type: string; style?: string; row: string[] })[];
   href?: { type: string; path: string };
 }
 
@@ -40,7 +40,8 @@ export const convertRulesToHtml = (entries: (string | RuleEntry)[]): string => {
           html += '</tr></thead>';
         }
         html += '<tbody>';
-        entry.rows.forEach(row => {
+        entry.rows.forEach(rowItem => {
+          const row = Array.isArray(rowItem) ? rowItem : rowItem.row;
           html += '<tr>';
           row.forEach(cell => {
              // Handle complex cell if necessary, though usually strings in this JSON
