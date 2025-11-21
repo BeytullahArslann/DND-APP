@@ -25,6 +25,15 @@ const WEAPONS_COLLECTION = `artifacts/${appId}/weapons`;
 const rulesData = rulesDataRaw as unknown as QuickReferenceData;
 const spellsData = spellsDataRaw as unknown as SpellsData;
 
+const sanitizeData = (data: any) => {
+  return Object.entries(data).reduce((acc, [key, value]) => {
+    if (value !== undefined) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {} as any);
+};
+
 export const cmsService = {
   // --- Rules ---
   async getRules(language: Language): Promise<RuleDocument[]> {
@@ -44,11 +53,12 @@ export const cmsService = {
   },
 
   async saveRule(rule: Partial<RuleDocument>) {
+    const data = sanitizeData(rule);
     if (rule.id) {
       const docRef = doc(db, RULES_COLLECTION, rule.id);
-      await updateDoc(docRef, { ...rule, updatedAt: serverTimestamp() });
+      await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() });
     } else {
-      await addDoc(collection(db, RULES_COLLECTION), { ...rule, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      await addDoc(collection(db, RULES_COLLECTION), { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
     }
   },
 
@@ -69,11 +79,12 @@ export const cmsService = {
   },
 
   async saveSpell(spell: Partial<SpellDocument>) {
+    const data = sanitizeData(spell);
     if (spell.id) {
       const docRef = doc(db, SPELLS_COLLECTION, spell.id);
-      await updateDoc(docRef, { ...spell, updatedAt: serverTimestamp() });
+      await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() });
     } else {
-      await addDoc(collection(db, SPELLS_COLLECTION), { ...spell, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      await addDoc(collection(db, SPELLS_COLLECTION), { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
     }
   },
 
@@ -93,11 +104,12 @@ export const cmsService = {
   },
 
   async saveWeapon(weapon: Partial<WeaponDocument>) {
+    const data = sanitizeData(weapon);
     if (weapon.id) {
       const docRef = doc(db, WEAPONS_COLLECTION, weapon.id);
-      await updateDoc(docRef, { ...weapon, updatedAt: serverTimestamp() });
+      await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() });
     } else {
-      await addDoc(collection(db, WEAPONS_COLLECTION), { ...weapon, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      await addDoc(collection(db, WEAPONS_COLLECTION), { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
     }
   },
 
@@ -173,7 +185,7 @@ export const cmsService = {
             components: JSON.stringify(spell.components),
             duration: JSON.stringify(spell.duration),
             description: JSON.stringify(spell.entries),
-            classes: spell.classes?.fromClassList.map(c => c.name) || [],
+            classes: spell.classes?.fromClassList?.map(c => c.name) || [],
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
         };
