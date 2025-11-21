@@ -9,7 +9,8 @@ import {
   query,
   collection,
   where,
-  getDocs
+  getDocs,
+  limit
 } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { db, appId } from '../lib/firebase';
@@ -24,6 +25,15 @@ export const userService = {
     const userSnap = await getDoc(userRef);
 
     if (!userSnap.exists()) {
+      // Check if any admin exists
+      const adminQuery = query(
+        collection(db, 'artifacts', appId, 'users'),
+        where('isAdmin', '==', true),
+        limit(1)
+      );
+      const adminSnap = await getDocs(adminQuery);
+      const isFirstAdmin = adminSnap.empty;
+
       const newProfile: UserProfile = {
         uid: user.uid,
         email: user.email,
@@ -31,7 +41,8 @@ export const userService = {
         photoURL: user.photoURL,
         friends: [],
         rooms: [],
-        roomInvites: []
+        roomInvites: [],
+        isAdmin: isFirstAdmin // Auto-grant admin if no admins exist
       };
 
       // We use serverTimestamp() which is a FieldValue, not strictly matching the type in frontend,

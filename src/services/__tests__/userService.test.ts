@@ -24,10 +24,16 @@ describe('userService', () => {
 
   describe('syncUserProfile', () => {
     it('creates a new profile if user does not exist', async () => {
-      // Mock getDoc to return exists() = false
+      // Mock getDoc to return exists() = false (User check)
       mockedGetDoc.mockResolvedValueOnce({
         exists: () => false,
         data: () => undefined,
+      } as any);
+
+      // Mock getDocs for admin check (return empty -> means no admins -> should set isAdmin: true)
+      mockedGetDocs.mockResolvedValueOnce({
+        empty: true,
+        docs: []
       } as any);
 
       await userService.syncUserProfile(mockUser as any);
@@ -40,6 +46,7 @@ describe('userService', () => {
       expect(data.uid).toBe(mockUser.uid);
       expect(data.email).toBe(mockUser.email);
       expect(data.createdAt).toBe('MOCKED_TIMESTAMP'); // from setupTests
+      expect(data.isAdmin).toBe(true); // First user should be admin
     });
 
     it('updates existing profile on login', async () => {
