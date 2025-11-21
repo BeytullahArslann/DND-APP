@@ -6,11 +6,13 @@ import {
   query,
   orderBy,
   limit,
-  onSnapshot
+  onSnapshot,
+  Timestamp
 } from 'firebase/firestore';
 import { History as HistoryIcon } from 'lucide-react';
 import { db, appId } from '../../lib/firebase';
 import { useTranslation } from 'react-i18next';
+import { RollLog } from '../../types';
 
 interface DiceRollerProps {
   user: any;
@@ -19,8 +21,8 @@ interface DiceRollerProps {
 
 export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
   const { t } = useTranslation();
-  const [history, setHistory] = useState<any[]>([]);
-  const [latestRoll, setLatestRoll] = useState<any>(null);
+  const [history, setHistory] = useState<RollLog[]>([]);
+  const [latestRoll, setLatestRoll] = useState<RollLog | null>(null);
   const [animating, setAnimating] = useState(false);
 
   useEffect(() => {
@@ -33,12 +35,16 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const rolls = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const rolls = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RollLog));
       setHistory(rolls);
       if (rolls.length > 0) {
         const newest = rolls[0];
         // Check if timestamp exists to prevent errors on optimistic updates or server lag
-        if (!latestRoll || (newest.timestamp && latestRoll.timestamp && newest.timestamp.seconds !== latestRoll.timestamp.seconds)) {
+        // We cast timestamp to any to access .seconds safely, assuming it follows Firestore Timestamp shape if present
+        const currentTs = newest.timestamp as Timestamp | undefined;
+        const latestTs = latestRoll?.timestamp as Timestamp | undefined;
+
+        if (!latestRoll || (currentTs && latestTs && currentTs.seconds !== latestTs.seconds)) {
           setLatestRoll(newest);
         } else if (!latestRoll) {
            setLatestRoll(newest);
@@ -135,7 +141,7 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
                       <div className="bg-slate-900 p-1 rounded text-center">
                           <div className="text-slate-500">{t('dice.hit')}</div>
                           <div className={`font-bold ${roll.result === 20 ? 'text-green-400' : roll.result === 1 ? 'text-red-400' : 'text-white'}`}>
-                              {roll.result} {roll.hitBonus >= 0 ? `+${roll.hitBonus}` : roll.hitBonus} = <span className="text-amber-400">{roll.result + parseInt(roll.hitBonus || 0)}</span>
+                              {roll.result} {roll.hitBonus! >= 0 ? `+${roll.hitBonus}` : roll.hitBonus} = <span className="text-amber-400">{Number(roll.result) + parseInt(roll.hitBonus?.toString() || '0')}</span>
                           </div>
                       </div>
                       <div className="bg-slate-900 p-1 rounded text-center">
