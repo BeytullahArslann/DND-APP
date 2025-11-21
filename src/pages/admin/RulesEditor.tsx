@@ -18,17 +18,21 @@ const EditForm: React.FC<EditFormProps> = ({ editingRule, setEditingRule, fetchR
       setJsonString(JSON.stringify(editingRule?.content || [], null, 2));
   }, [editingRule]);
 
-  const onSave = () => {
+  const onSave = async () => {
       try {
           const content = JSON.parse(jsonString);
           const updatedRule = { ...editingRule, content };
 
-          cmsService.saveRule(updatedRule).then(() => {
-              setEditingRule(null);
-              fetchRules();
-          });
+          await cmsService.saveRule(updatedRule);
+          setEditingRule(null);
+          fetchRules();
       } catch (e) {
-          setJsonError("Geçersiz JSON formatı");
+          console.error(e);
+          if (e instanceof SyntaxError) {
+             setJsonError("Geçersiz JSON formatı");
+          } else {
+             alert("Kaydetme sırasında bir hata oluştu.");
+          }
       }
   };
 
