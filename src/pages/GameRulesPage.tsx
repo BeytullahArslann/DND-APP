@@ -20,9 +20,12 @@ const GameRulesPage: React.FC = () => {
   // Find the active chapter object to get its headers
   const activeChapter = chapters.find(c => c.name === activeChapterName);
 
+  // Flatten all data entries from all sections
+  const allEntries = rulesData.data.flatMap(d => d.entries || []);
+
   // Filter the data entries that match the headers of the active chapter
   const activeEntries = activeChapter
-    ? rulesData.data[0].entries.filter(entry =>
+    ? allEntries.filter(entry =>
         typeof entry !== 'string' && entry.name && activeChapter.headers.includes(entry.name)
       )
     : [];
