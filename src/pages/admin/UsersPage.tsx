@@ -67,10 +67,11 @@ const UsersPage: React.FC = () => {
       if (confirm("Bu kullanıcıyı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.")) {
           try {
               await userService.deleteUser(targetUid);
-              fetchUsers();
+              setUsers(prev => prev.filter(u => u.uid !== targetUid));
           } catch (error) {
               console.error("Error deleting user:", error);
               alert("İşlem başarısız oldu.");
+              fetchUsers(); // Revert state on error
           }
       }
   };
