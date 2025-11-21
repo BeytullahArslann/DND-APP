@@ -6,7 +6,8 @@ import {
   Plus,
   Home,
   MessageSquare,
-  User
+  User,
+  BookOpen
 } from 'lucide-react';
 import { doc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { db, appId } from '../lib/firebase';
@@ -71,6 +72,17 @@ export const MainLayout = () => {
             <Home size={24} />
             <div className="absolute left-14 bg-black px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                 {t('sidebar.home')}
+            </div>
+        </Link>
+
+        <Link
+            to="/rules"
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200 group relative flex-shrink-0
+            ${isActive('/rules') ? 'bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-900/20' : 'bg-slate-800 text-indigo-400 hover:bg-indigo-600 hover:text-white hover:rounded-xl'}`}
+        >
+            <BookOpen size={24} />
+            <div className="absolute left-14 bg-black px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                Oyun Kuralları
             </div>
         </Link>
 
@@ -151,6 +163,10 @@ export const MainLayout = () => {
         <div className="absolute bottom-0 left-0 right-0 h-16 bg-slate-950 border-t border-slate-800 flex items-center justify-around px-4 z-50 pb-safe-bottom">
             <Link to="/" className={`p-2 rounded-xl ${isActive('/') ? 'text-amber-500' : 'text-slate-400'}`}>
                 <Home size={24} />
+            </Link>
+
+            <Link to="/rules" className={`p-2 rounded-xl ${isActive('/rules') ? 'text-indigo-500' : 'text-slate-400'}`}>
+                <BookOpen size={24} />
             </Link>
 
             <button onClick={() => setShowChat(!showChat)} className={`p-2 rounded-xl ${showChat ? 'text-indigo-500' : 'text-slate-400'}`}>
