@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { db, appId } from '../../lib/firebase';
 import { User } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface FriendSelectorProps {
     onSelect: (email: string) => void;
@@ -10,6 +11,7 @@ interface FriendSelectorProps {
 
 export const FriendSelector = ({ onSelect }: FriendSelectorProps) => {
     const { user } = useAuth();
+    const { t } = useTranslation();
     const [friends, setFriends] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -33,9 +35,9 @@ export const FriendSelector = ({ onSelect }: FriendSelectorProps) => {
         return () => unsubscribe();
     }, [user]);
 
-    if (loading) return <div className="text-xs text-slate-500">Yükleniyor...</div>;
+    if (loading) return <div className="text-xs text-slate-500">{t('common.loading')}</div>;
 
-    if (friends.length === 0) return <div className="text-xs text-slate-500">Arkadaş listen boş.</div>;
+    if (friends.length === 0) return <div className="text-xs text-slate-500">{t('room.friend_list_empty')}</div>;
 
     return (
         <div className="space-y-2">

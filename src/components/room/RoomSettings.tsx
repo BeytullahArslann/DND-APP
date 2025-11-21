@@ -18,6 +18,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 interface RoomSettingsProps {
   roomData: any;
@@ -27,6 +28,7 @@ interface RoomSettingsProps {
 
 export const RoomSettings = ({ roomData, isOpen, onClose }: RoomSettingsProps) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [memberDetails, setMemberDetails] = useState<{[key: string]: any}>({});
 
@@ -88,7 +90,7 @@ export const RoomSettings = ({ roomData, isOpen, onClose }: RoomSettingsProps) =
   };
 
   const handleKick = async (uid: string) => {
-    if (!confirm("Bu oyuncuyu atmak istediğinize emin misiniz?") || loading) return;
+    if (!confirm(t('settings.kick_confirm')) || loading) return;
     setLoading(true);
     try {
         const roomRef = doc(db, 'artifacts', appId, 'rooms', roomData.id);
@@ -113,7 +115,7 @@ export const RoomSettings = ({ roomData, isOpen, onClose }: RoomSettingsProps) =
   };
 
   const handleDeleteRoom = async () => {
-      if (!confirm("BU ODAYI KALICI OLARAK SİLMEK İSTEDİĞİNİZE EMİN MİSİNİZ? Bu işlem geri alınamaz.") || loading) return;
+      if (!confirm(t('settings.delete_confirm')) || loading) return;
       setLoading(true);
       try {
           await deleteDoc(doc(db, 'artifacts', appId, 'rooms', roomData.id));
@@ -129,17 +131,17 @@ export const RoomSettings = ({ roomData, isOpen, onClose }: RoomSettingsProps) =
       : "Bilinmiyor";
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Oda Ayarları">
+    <Modal isOpen={isOpen} onClose={onClose} title={t('settings.title')}>
         <div className="space-y-6">
              <div className="text-xs text-slate-500 border-b border-slate-700 pb-2">
-                 Oluşturulma Tarihi: <span className="text-slate-300">{formattedCreatedAt}</span>
+                 {t('settings.creation_date')}: <span className="text-slate-300">{formattedCreatedAt}</span>
              </div>
 
             {/* Pending Requests */}
             <div>
-                <h4 className="text-sm font-bold text-slate-400 uppercase mb-2">Bekleyen İstekler</h4>
+                <h4 className="text-sm font-bold text-slate-400 uppercase mb-2">{t('settings.pending_requests')}</h4>
                 {(!roomData.pendingRequests || roomData.pendingRequests.length === 0) ? (
-                    <div className="text-slate-600 text-sm italic">Bekleyen istek yok.</div>
+                    <div className="text-slate-600 text-sm italic">{t('settings.no_pending')}</div>
                 ) : (
                     <div className="space-y-2">
                         {roomData.pendingRequests.map((req: any, idx: number) => (
@@ -160,7 +162,7 @@ export const RoomSettings = ({ roomData, isOpen, onClose }: RoomSettingsProps) =
 
             {/* Member List */}
             <div>
-                <h4 className="text-sm font-bold text-slate-400 uppercase mb-2">Üyeler</h4>
+                <h4 className="text-sm font-bold text-slate-400 uppercase mb-2">{t('settings.members')}</h4>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                     {roomData.members?.map((uid: string) => {
                         const details = memberDetails[uid];
@@ -192,11 +194,11 @@ export const RoomSettings = ({ roomData, isOpen, onClose }: RoomSettingsProps) =
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <div className="text-white text-sm font-bold flex items-center gap-2">
-                                        <span className="truncate max-w-[150px]">{details?.displayName || 'Yükleniyor...'}</span>
-                                        {uid === roomData.ownerId && <span className="text-xs bg-amber-900/50 text-amber-500 px-1.5 py-0.5 rounded border border-amber-900/50">👑 Sahip</span>}
+                                        <span className="truncate max-w-[150px]">{details?.displayName || t('common.loading')}</span>
+                                        {uid === roomData.ownerId && <span className="text-xs bg-amber-900/50 text-amber-500 px-1.5 py-0.5 rounded border border-amber-900/50">👑 {t('settings.owner')}</span>}
                                     </div>
                                     <div className="text-[10px] text-slate-500 flex flex-col">
-                                         <span>{dateStr ? `${dateStr} tarihinde katıldı` : 'Tarih yok'}</span>
+                                         <span>{dateStr ? `${dateStr} ${t('settings.joined_at')}` : t('settings.no_date')}</span>
                                          {/* Debug ID only if name missing or in dev */}
                                          {!details?.displayName && <span className="text-[9px] opacity-50">{uid}</span>}
                                     </div>
@@ -204,7 +206,7 @@ export const RoomSettings = ({ roomData, isOpen, onClose }: RoomSettingsProps) =
                             </div>
 
                             {uid !== roomData.ownerId && (
-                                <button onClick={() => handleKick(uid)} className="bg-red-900/20 hover:bg-red-900/40 text-red-500 p-2 rounded-lg transition-colors" title="Oyuncuyu At">
+                                <button onClick={() => handleKick(uid)} className="bg-red-900/20 hover:bg-red-900/40 text-red-500 p-2 rounded-lg transition-colors" title={t('settings.kick')}>
                                     <UserX size={18} />
                                 </button>
                             )}
@@ -215,12 +217,12 @@ export const RoomSettings = ({ roomData, isOpen, onClose }: RoomSettingsProps) =
 
             {/* Danger Zone */}
             <div className="pt-4 border-t border-red-900/30">
-                 <h4 className="text-sm font-bold text-red-500 uppercase mb-2 flex items-center"><ShieldAlert className="w-4 h-4 mr-1"/> Tehlike Bölgesi</h4>
+                 <h4 className="text-sm font-bold text-red-500 uppercase mb-2 flex items-center"><ShieldAlert className="w-4 h-4 mr-1"/> {t('settings.danger_zone')}</h4>
                  <button
                     onClick={handleDeleteRoom}
                     className="w-full bg-red-900/20 hover:bg-red-900/40 text-red-500 border border-red-900/50 p-2 rounded flex items-center justify-center transition-colors"
                 >
-                    <Trash2 className="w-4 h-4 mr-2" /> Odayı Sil
+                    <Trash2 className="w-4 h-4 mr-2" /> {t('settings.delete_room')}
                  </button>
             </div>
         </div>

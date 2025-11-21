@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { calculateCasterLevel, formatModifier, getModifier, parseDamage } from '../../utils/stats.js';
 import { db, appId } from '../../lib/firebase';
+import { useTranslation } from 'react-i18next';
 
 // --- 5eTürkçe (Kanguen) Kural Setleri ---
 
@@ -144,6 +145,7 @@ interface CharacterSheetProps {
 }
 
 export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterSheetProps) => {
+  const { t } = useTranslation();
   const [charData, setCharData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -394,15 +396,15 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
       }
   };
 
-  if (loading) return <div className="p-8 text-center text-slate-400">Yükleniyor...</div>;
+  if (loading) return <div className="p-8 text-center text-slate-400">{t('common.loading')}</div>;
 
   if (!charData && !isDM) {
       return (
           <div className="p-6 bg-slate-800 rounded-xl border border-slate-600 m-4">
-              <h2 className="text-2xl font-bold text-amber-500 mb-4">Karakter Oluştur</h2>
+              <h2 className="text-2xl font-bold text-amber-500 mb-4">{t('character.create_title')}</h2>
               <div className="space-y-4">
                   <input
-                    placeholder="Karakter Adı"
+                    placeholder={t('character.name')}
                     value={setupData.name}
                     onChange={e => setSetupData({...setupData, name: e.target.value})}
                     className="w-full p-2 bg-slate-900 rounded border border-slate-600 text-white"
@@ -430,13 +432,13 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
                   >
                       {Object.keys(BACKGROUNDS_DATA).map(b => <option key={b} value={b}>{b}</option>)}
                   </select>
-                  <button onClick={handleSetupSubmit} className="w-full bg-amber-600 text-white font-bold py-3 rounded">Maceraya Başla</button>
+                  <button onClick={handleSetupSubmit} className="w-full bg-amber-600 text-white font-bold py-3 rounded">{t('character.start_adventure')}</button>
               </div>
           </div>
       );
   }
 
-  if (!charData) return <div className="p-8 text-center text-slate-400">Karakter verisi bulunamadı.</div>;
+  if (!charData) return <div className="p-8 text-center text-slate-400">{t('character.no_data')}</div>;
 
   return (
     <div className="p-4 space-y-6 pb-24 overflow-y-auto h-full relative">
@@ -449,7 +451,7 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
 
                   {attackResult.hit !== undefined && (
                       <div className="mb-4 p-4 bg-slate-900 rounded-xl border border-slate-700">
-                          <div className="text-slate-400 text-xs uppercase font-bold mb-1">Tutturma Zarı (d20)</div>
+                          <div className="text-slate-400 text-xs uppercase font-bold mb-1">{t('dice.hit_roll')}</div>
                           <div className={`text-5xl font-black ${attackResult.isCrit ? 'text-green-400' : attackResult.hit === 1 ? 'text-red-500' : 'text-white'}`}>
                               {attackResult.hit}
                           </div>
@@ -460,14 +462,14 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
                   )}
 
                   <div className="p-4 bg-red-900/20 rounded-xl border border-red-900/50">
-                      <div className="text-red-300 text-xs uppercase font-bold mb-1">{attackResult.isHeal ? 'İyileştirme' : 'Hasar'}</div>
+                      <div className="text-red-300 text-xs uppercase font-bold mb-1">{attackResult.isHeal ? t('dice.heal') : t('dice.damage')}</div>
                       <div className={`text-6xl font-black ${attackResult.isHeal ? 'text-green-400' : 'text-red-500'}`}>
                           {attackResult.dmg}
                       </div>
-                      {attackResult.isCrit && <div className="text-amber-400 font-bold text-sm mt-2 animate-pulse">KRİTİK VURUŞ! (2x Zar)</div>}
+                      {attackResult.isCrit && <div className="text-amber-400 font-bold text-sm mt-2 animate-pulse">{t('dice.crit')} (2x)</div>}
                   </div>
 
-                  <button onClick={() => setAttackResult(null)} className="mt-6 w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg font-bold">Kapat</button>
+                  <button onClick={() => setAttackResult(null)} className="mt-6 w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg font-bold">{t('common.close')}</button>
               </div>
           </div>
       )}
@@ -477,7 +479,7 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
           <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
               <div className="bg-slate-800 p-6 rounded-xl w-full max-w-md border border-amber-500 shadow-2xl">
                   <h3 className="text-2xl font-bold text-amber-500 mb-4 text-center flex items-center justify-center">
-                      <ChevronUp className="mr-2" /> Seviye Atla
+                      <ChevronUp className="mr-2" /> {t('character.level_up')}
                   </h3>
 
                   {levelUpPhase === 'select' && (
@@ -492,7 +494,7 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
                                     className="text-amber-500 focus:ring-amber-500"
                                   />
                                   <div className="flex-1">
-                                      <div className="font-bold text-white">Mevcut Sınıfı Yükselt</div>
+                                      <div className="font-bold text-white">{t('character.existing_class')}</div>
                                       <select
                                         disabled={levelUpSelection.type !== 'existing'}
                                         className="w-full mt-2 bg-slate-800 text-white p-2 rounded text-sm border border-slate-600"
@@ -506,30 +508,30 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
                               </label>
                           </div>
                           <button onClick={handleLevelUpRoll} className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded">
-                              Devam Et & Zar At
+                              {t('character.continue_roll')}
                           </button>
-                          <button onClick={() => setShowLevelUpModal(false)} className="w-full text-slate-400 py-2 text-sm">İptal</button>
+                          <button onClick={() => setShowLevelUpModal(false)} className="w-full text-slate-400 py-2 text-sm">{t('common.cancel')}</button>
                       </div>
                   )}
 
                   {levelUpPhase === 'hp' && levelUpRoll && (
                       <div className="text-center space-y-6">
                           <div className="text-slate-300">
-                              <span className="text-amber-400 font-bold">{levelUpRoll.targetClassName}</span> sınıfında seviye atlıyorsun!
+                              <span className="text-amber-400 font-bold">{levelUpRoll.targetClassName}</span> {t('character.class_up_msg')}!
                           </div>
                           <div className="bg-slate-900 p-6 rounded-lg border border-slate-700">
-                              <div className="text-xs text-slate-500 uppercase font-bold mb-2">Can Zarı Sonucu (d{levelUpRoll.hitDie})</div>
+                              <div className="text-xs text-slate-500 uppercase font-bold mb-2">{t('character.hit_dice_result')} (d{levelUpRoll.hitDie})</div>
                               <div className="text-5xl font-bold text-white mb-2">{levelUpRoll.roll}</div>
                               <div className="text-sm text-slate-400 flex justify-center items-center space-x-2">
                                   <span>Zar: {levelUpRoll.roll}</span>
                                   <span>+</span>
-                                  <span>DAY: {formatModifier(levelUpRoll.conMod)}</span>
+                                  <span>{t('character.con_short')}: {formatModifier(levelUpRoll.conMod)}</span>
                                   <span>=</span>
-                                  <span className="text-green-400 font-bold text-lg">+{levelUpRoll.gain} Maks Can</span>
+                                  <span className="text-green-400 font-bold text-lg">+{levelUpRoll.gain} {t('character.hp_gain')}</span>
                               </div>
                           </div>
                           <button onClick={confirmLevelUp} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded">
-                              Onayla ve Tamamla
+                              {t('character.confirm_complete')}
                           </button>
                       </div>
                   )}
@@ -540,17 +542,17 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
       {/* READ-ONLY INFO FOR DM */}
       {isDM && targetUid !== user.uid && (
           <div className="bg-amber-900/30 border border-amber-600/50 p-2 rounded text-center text-amber-200 text-xs mb-2">
-              <Eye className="inline w-3 h-3 mr-1"/> DM Modu: {charData.name} adlı oyuncuyu düzenliyorsunuz.
+              <Eye className="inline w-3 h-3 mr-1"/> {t('character.dm_mode', { name: charData.name })}
           </div>
       )}
 
       {/* SAVAŞ PANELİ */}
       <div className="bg-slate-800 p-4 rounded-xl border border-red-900/50">
-          <h3 className="text-white font-bold mb-2 flex items-center"><Sword className="w-4 h-4 mr-2 text-red-500"/> Savaş & Eylem</h3>
+          <h3 className="text-white font-bold mb-2 flex items-center"><Sword className="w-4 h-4 mr-2 text-red-500"/> {t('character.combat_action')}</h3>
 
           {canEdit && (
              <div className="flex gap-1 mb-4 text-xs">
-                 <input placeholder="Silah Adı" className="bg-slate-900 text-white p-1 rounded flex-1" value={newWeapon.name} onChange={e=>setNewWeapon({...newWeapon, name:e.target.value})} />
+                 <input placeholder={t('character.weapon_name')} className="bg-slate-900 text-white p-1 rounded flex-1" value={newWeapon.name} onChange={e=>setNewWeapon({...newWeapon, name:e.target.value})} />
                  <input placeholder="+Hit" type="number" className="bg-slate-900 text-white p-1 rounded w-12" value={newWeapon.hit} onChange={e=>setNewWeapon({...newWeapon, hit:parseInt(e.target.value)})} />
                  <input placeholder="1d8+3" className="bg-slate-900 text-white p-1 rounded w-16" value={newWeapon.dmg} onChange={e=>setNewWeapon({...newWeapon, dmg:e.target.value})} />
                  <button onClick={() => {
@@ -575,7 +577,7 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
                             onClick={() => performAttack(w)}
                             className="bg-red-900/80 hover:bg-red-700 text-white text-xs px-3 py-1 rounded flex items-center mr-2"
                         >
-                            <Target className="w-3 h-3 mr-1"/> Saldır
+                            <Target className="w-3 h-3 mr-1"/> {t('character.attack')}
                         </button>
                         {canEdit && (
                             <button onClick={()=>updateChar({...charData, weapons: charData.weapons.filter((i: any)=>i.id!==w.id)})} className="text-slate-600 hover:text-red-400"><Trash2 className="w-3 h-3"/></button>
@@ -594,14 +596,14 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
                       <div key={s.id} className="flex items-center justify-between bg-slate-900/50 p-2 rounded border border-slate-700 hover:border-purple-500/50">
                           <div>
                               <div className="text-purple-300 font-bold text-sm">{s.name}</div>
-                              <div className="text-slate-500 text-xs">{s.level}. Seviye {s.level > 0 && `(${currentSlots} kaldı)`}</div>
+                              <div className="text-slate-500 text-xs">{s.level}. {t('character.level')} {s.level > 0 && `(${currentSlots} ${t('character.remaining')})`}</div>
                           </div>
                           <button
                                 onClick={() => castSpell(s)}
                                 disabled={!hasSlot && s.level > 0}
                                 className={`text-xs px-3 py-1 rounded flex items-center ${hasSlot || s.level === 0 ? 'bg-purple-900/80 hover:bg-purple-700 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}
                             >
-                                <Flame className="w-3 h-3 mr-1"/> {s.type === 'heal' ? 'İyileştir' : 'Fırlat'}
+                                <Flame className="w-3 h-3 mr-1"/> {s.type === 'heal' ? t('character.heal') : t('character.cast')}
                             </button>
                       </div>
                    )
@@ -615,7 +617,7 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
               value={charData.name}
               onChange={(e) => updateChar({...charData, name: e.target.value})}
               className="bg-transparent text-2xl font-bold text-white w-2/3 border-b border-slate-600 focus:border-amber-500 outline-none"
-              placeholder="Karakter Adı"
+              placeholder={t('character.name')}
               disabled={!canEdit}
             />
             {charData.classes.length > 0 && canEdit && (
@@ -629,7 +631,7 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
       <div className="grid grid-cols-3 gap-2">
         {STAT_ORDER.map((stat) => (
           <div key={stat} className="bg-slate-800 p-2 rounded-lg border border-slate-700 text-center">
-            <div className="text-slate-500 text-[10px] font-bold mb-1">{STAT_LABELS[stat]}</div>
+            <div className="text-slate-500 text-[10px] font-bold mb-1">{t(`stats.${stat}`)}</div>
             {canEdit ? (
                 <input
                 type="number"
@@ -653,7 +655,7 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
       {/* İşlevsel Büyüler (Savaş dışı veya buff) */}
       {canEdit && (
         <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
-            <div className="flex items-center text-blue-300 font-bold mb-4"><Zap className="w-4 h-4 mr-2"/> <span>Diğer Büyüler</span></div>
+            <div className="flex items-center text-blue-300 font-bold mb-4"><Zap className="w-4 h-4 mr-2"/> <span>{t('character.other_spells')}</span></div>
             <div className="space-y-1">
                 {(charData.spells || []).filter((s: any) => s.type === 'utility').map((s: any) => {
                    const maxSlots = getMaxSpellSlots();
@@ -667,7 +669,7 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
                                 disabled={!hasSlot && s.level > 0}
                                 className={`text-xs px-2 py-1 rounded ${hasSlot || s.level === 0 ? 'bg-blue-900 text-white hover:bg-blue-700' : 'bg-slate-700 text-slate-500'}`}
                             >
-                                Kullan ({s.level})
+                                {t('character.use')} ({s.level})
                             </button>
                        </div>
                    )
@@ -680,7 +682,7 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
                     onChange={(e) => e.target.value && setSelectedSpellObj(JSON.parse(e.target.value))}
                     className="flex-1 bg-slate-900 text-slate-300 p-2 rounded text-sm border border-slate-600 outline-none"
                 >
-                    <option value="">Büyü Öğren...</option>
+                    <option value="">{t('character.learn_spell')}</option>
                     {SPELL_DB.map(s => <option key={s.name} value={JSON.stringify(s)}>{s.level}.Sv - {s.name}</option>)}
                 </select>
                 <button

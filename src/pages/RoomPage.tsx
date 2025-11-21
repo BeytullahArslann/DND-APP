@@ -23,10 +23,12 @@ import { RoomSettings } from '../components/room/RoomSettings';
 import { Modal } from '../components/Modal';
 import { FriendSelector } from '../components/room/FriendSelector';
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
 
 export const RoomPage = () => {
   const { roomId } = useParams();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'dice' | 'char' | 'party'>('dice');
   const [roomData, setRoomData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -58,9 +60,9 @@ export const RoomPage = () => {
     return () => unsubscribe();
   }, [roomId, user]);
 
-  if (loading) return <div className="p-8 text-slate-500">Oda yükleniyor...</div>;
+  if (loading) return <div className="p-8 text-slate-500">{t('room.loading')}</div>;
 
-  if (!roomData) return <div className="p-8 text-red-500">Oda bulunamadı veya silinmiş.</div>;
+  if (!roomData) return <div className="p-8 text-red-500">{t('room.not_found')}</div>;
 
   // Check Access
   const isMember = roomData.members?.includes(user?.uid);
@@ -87,7 +89,7 @@ export const RoomPage = () => {
 
   const handleCopyCode = () => {
       navigator.clipboard.writeText(roomId!);
-      addToast('Oda kodu kopyalandı: ' + roomId, 'success');
+      addToast(t('room.copy_code') + roomId, 'success');
   };
 
   const handleInviteByEmail = async (e: React.FormEvent) => {
@@ -99,7 +101,7 @@ export const RoomPage = () => {
           const snap = await getDocs(q);
 
           if (snap.empty) {
-              addToast('Bu e-posta ile kayıtlı kullanıcı bulunamadı.', 'error');
+              addToast(t('room.user_not_found_email'), 'error');
               return;
           }
 
@@ -108,7 +110,7 @@ export const RoomPage = () => {
 
           // Check if already in room
           if (roomData.members?.includes(targetUserDoc.id)) {
-              addToast('Kullanıcı zaten odada.', 'info');
+              addToast(t('room.user_already_in'), 'info');
               return;
           }
 
@@ -124,12 +126,12 @@ export const RoomPage = () => {
               roomInvites: arrayUnion(inviteData)
           });
 
-          addToast(`${inviteEmail} adresine davet gönderildi!`, 'success');
+          addToast(`${inviteEmail} ${t('room.invite_sent')}`, 'success');
           setInviteEmail('');
           setShowInviteModal(false);
       } catch (e) {
           console.error(e);
-          addToast('Davet gönderilirken hata oluştu.', 'error');
+          addToast(t('room.invite_error'), 'error');
       }
   };
 
@@ -147,7 +149,7 @@ export const RoomPage = () => {
           <div
             onClick={handleCopyCode}
             className="hidden md:flex items-center bg-slate-900/50 px-2 py-1 rounded border border-slate-700 text-xs text-slate-400 cursor-pointer hover:bg-slate-700 hover:text-white ml-4"
-            title="Oda Kodunu Kopyala"
+            title={t('room.copy_title')}
           >
              <span className="font-mono mr-2">ID: {roomId}</span>
              <Copy size={12} />
@@ -158,7 +160,7 @@ export const RoomPage = () => {
              <button
                 onClick={() => setShowInviteModal(true)}
                 className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors"
-                title="E-posta ile Davet Et"
+                title={t('room.invite_email')}
             >
                 <Mail size={18} />
             </button>
@@ -166,9 +168,9 @@ export const RoomPage = () => {
             <button
                 onClick={handleCopyLink}
                 className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors"
-                title="Davet Linkini Kopyala"
+                title={t('room.copy_link')}
             >
-                {copiedLink ? <span className="text-green-400 text-xs font-bold">Kopyalandı!</span> : <Share2 size={18} />}
+                {copiedLink ? <span className="text-green-400 text-xs font-bold">{t('room.copied')}</span> : <Share2 size={18} />}
             </button>
 
             {isDM && (
@@ -176,17 +178,17 @@ export const RoomPage = () => {
                     <button
                         onClick={() => setShowSettings(true)}
                         className="p-2 hover:bg-slate-700 rounded text-amber-500 hover:text-amber-300 transition-colors relative"
-                        title="Oda Ayarları"
+                        title={t('room.settings')}
                     >
                         <Settings size={18} />
                         {roomData.pendingRequests?.length > 0 && (
                             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                         )}
                     </button>
-                    <span className="flex items-center text-amber-400 bg-amber-900/20 px-2 py-1 rounded border border-amber-900/50"><Crown className="w-3 h-3 mr-1"/> DM</span>
+                    <span className="flex items-center text-amber-400 bg-amber-900/20 px-2 py-1 rounded border border-amber-900/50"><Crown className="w-3 h-3 mr-1"/> {t('room.dm_badge')}</span>
                 </>
             )}
-            {userRole === 'spectator' && <span className="flex items-center text-blue-400"><Eye className="w-3 h-3 mr-1"/> İzleyici</span>}
+            {userRole === 'spectator' && <span className="flex items-center text-blue-400"><Eye className="w-3 h-3 mr-1"/> {t('room.spectator_badge')}</span>}
 
             <button
                 onClick={() => setIsChatOpen(!isChatOpen)}
@@ -238,7 +240,7 @@ export const RoomPage = () => {
                 className={`flex flex-col items-center p-2 rounded-lg transition-colors w-16 ${activeTab === 'char' ? 'text-amber-500 bg-slate-700' : 'text-slate-400 hover:text-slate-200'}`}
               >
                 <Scroll className="w-6 h-6 mb-1" />
-                <span className="text-[10px] font-medium">{isDM ? 'Düzenle' : 'Karakter'}</span>
+                <span className="text-[10px] font-medium">{isDM ? t('room.edit') : t('room.character')}</span>
               </button>
           )}
 
@@ -254,7 +256,7 @@ export const RoomPage = () => {
             className={`flex flex-col items-center p-2 rounded-lg transition-colors w-16 ${activeTab === 'party' ? 'text-amber-500 bg-slate-700' : 'text-slate-400 hover:text-slate-200'}`}
           >
             <Users className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-medium">Parti</span>
+            <span className="text-[10px] font-medium">{t('room.party')}</span>
           </button>
         </div>
       </nav>
@@ -266,10 +268,10 @@ export const RoomPage = () => {
       </div>
 
       {/* Modals */}
-      <Modal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} title="Arkadaş Davet Et">
+      <Modal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} title={t('room.invite_modal_title')}>
           <form onSubmit={handleInviteByEmail} className="space-y-4">
               <div>
-                  <label className="block text-sm font-bold text-slate-400 mb-1">Arkadaş E-posta</label>
+                  <label className="block text-sm font-bold text-slate-400 mb-1">{t('room.friend_email_label')}</label>
                   <input
                     type="email"
                     required
@@ -280,13 +282,13 @@ export const RoomPage = () => {
                   />
               </div>
               <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded">
-                  Davet Gönder
+                  {t('room.send_invite')}
               </button>
           </form>
 
           {/* Friend List Selection */}
           <div className="mt-6 pt-4 border-t border-slate-700">
-                <h4 className="text-sm font-bold text-slate-400 mb-2">Arkadaşlarından Seç</h4>
+                <h4 className="text-sm font-bold text-slate-400 mb-2">{t('room.select_friend')}</h4>
                 <div className="max-h-40 overflow-y-auto space-y-2">
                      {/* We need to fetch friends here or pass them. For now, we can't easily access friends state from here without fetching.
                          Ideally, RoomPage should fetch friends or use a context.
