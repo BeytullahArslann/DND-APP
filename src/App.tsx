@@ -8,6 +8,12 @@ import { DashboardPage } from './pages/DashboardPage';
 import { RoomPage } from './pages/RoomPage';
 import GameRulesPage from './pages/GameRulesPage';
 import { ErrorPage } from './pages/ErrorPage';
+import AdminLayout from './layouts/AdminLayout';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import RulesEditor from './pages/admin/RulesEditor';
+import SpellsEditor from './pages/admin/SpellsEditor';
+import WeaponsEditor from './pages/admin/WeaponsEditor';
+import UsersPage from './pages/admin/UsersPage';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -39,6 +45,18 @@ const router = createBrowserRouter([
     element: <MainLayout />,
     children: [
       { path: '', element: <GameRulesPage /> }
+    ]
+  },
+  {
+    path: '/admin',
+    element: <AdminLayout />,
+    errorElement: <ErrorPage />,
+    children: [
+      { path: '', element: <AdminDashboard /> },
+      { path: 'rules', element: <RulesEditor /> },
+      { path: 'spells', element: <SpellsEditor /> },
+      { path: 'weapons', element: <WeaponsEditor /> },
+      { path: 'users', element: <UsersPage /> },
     ]
   },
   {

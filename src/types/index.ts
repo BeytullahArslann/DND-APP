@@ -96,6 +96,7 @@ export interface UserProfile {
   friends: string[]; // List of UIDs
   rooms: string[]; // List of Room IDs
   roomInvites?: RoomInvite[];
+  isAdmin?: boolean;
 }
 
 export interface Room {
