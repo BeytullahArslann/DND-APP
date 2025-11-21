@@ -47,14 +47,14 @@ export const convertRulesToHtml = (entries: (string | RuleEntry)[]): string => {
         });
         html += '</ul>';
       } else if (entry.type === 'table' && entry.rows) {
-        html += '<table class="w-full border-collapse border border-gray-600 mb-4">';
         if (entry.caption) {
-          html += `<caption class="text-lg font-bold mb-2">${entry.caption}</caption>`;
+          html += `<p><strong>${entry.caption}</strong></p>`;
         }
+        html += '<table>';
         if (entry.colLabels) {
           html += '<thead><tr>';
           entry.colLabels.forEach(label => {
-            html += `<th class="border border-gray-600 p-2 bg-gray-700">${processString(label)}</th>`;
+            html += `<th>${processString(label)}</th>`;
           });
           html += '</tr></thead>';
         }
@@ -66,7 +66,7 @@ export const convertRulesToHtml = (entries: (string | RuleEntry)[]): string => {
           if (Array.isArray(row)) {
               row.forEach(cell => {
                  const cellContent = processString(cell);
-                 html += `<td class="border border-gray-600 p-2">${cellContent}</td>`;
+                 html += `<td>${cellContent}</td>`;
               });
           }
           html += '</tr>';
