@@ -11,6 +11,7 @@ import {
   Edit3
 } from 'lucide-react';
 import { db, appId } from '../../lib/firebase';
+import { useTranslation } from 'react-i18next';
 
 interface PartyViewProps {
   roomCode: string;
@@ -21,6 +22,7 @@ interface PartyViewProps {
 }
 
 export const PartyView = ({ roomCode, currentUserUid, role, onSelectPlayer, selectedPlayerId }: PartyViewProps) => {
+  const { t } = useTranslation();
   const [players, setPlayers] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
 
@@ -40,7 +42,7 @@ export const PartyView = ({ roomCode, currentUserUid, role, onSelectPlayer, sele
                   if (snap.exists()) {
                       return { uid: snap.id, ...snap.data() };
                   }
-                  return { uid: snap.id, displayName: 'Bilinmeyen Oyuncu' };
+                  return { uid: snap.id, displayName: t('party.unknown_player') };
               });
               setMembers(memberList);
           }
@@ -73,12 +75,12 @@ export const PartyView = ({ roomCode, currentUserUid, role, onSelectPlayer, sele
   return (
     <div className="p-4 space-y-4 h-full overflow-y-auto">
       <h2 className="text-xl font-bold text-amber-500 mb-4 flex items-center">
-        <Users className="w-6 h-6 mr-2" /> Maceracılar
+        <Users className="w-6 h-6 mr-2" /> {t('party.title')}
       </h2>
 
       <div className="grid gap-4">
         {mergedPlayers.length === 0 ? (
-          <p className="text-slate-500 text-center">Henüz kimse görünmüyor...</p>
+          <p className="text-slate-500 text-center">{t('party.empty')}</p>
         ) : (
           mergedPlayers.map(p => (
             <div
@@ -105,7 +107,7 @@ export const PartyView = ({ roomCode, currentUserUid, role, onSelectPlayer, sele
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-baseline">
-                  <h3 className="font-bold text-white text-lg truncate pr-2">{p.displayName || 'Bilinmeyen'}</h3>
+                  <h3 className="font-bold text-white text-lg truncate pr-2">{p.displayName || t('party.unknown')}</h3>
                   <span className="text-xs text-slate-400 flex-shrink-0">{p.level ? `Lvl ${p.level}` : ''} {p.class || ''}</span>
                 </div>
 
@@ -123,12 +125,12 @@ export const PartyView = ({ roomCode, currentUserUid, role, onSelectPlayer, sele
                     </div>
                     </div>
                 ) : (
-                    <div className="mt-2 text-xs text-slate-500 italic">Karakter sayfası yok</div>
+                    <div className="mt-2 text-xs text-slate-500 italic">{t('party.no_sheet')}</div>
                 )}
 
                 {role === 'dm' && (
                     <div className="mt-2 text-[10px] text-amber-500 flex items-center justify-end">
-                        <Edit3 className="w-3 h-3 mr-1"/> Düzenlemek için tıkla
+                        <Edit3 className="w-3 h-3 mr-1"/> {t('party.click_edit')}
                     </div>
                 )}
               </div>

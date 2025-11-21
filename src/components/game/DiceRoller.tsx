@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { History as HistoryIcon } from 'lucide-react';
 import { db, appId } from '../../lib/firebase';
+import { useTranslation } from 'react-i18next';
 
 interface DiceRollerProps {
   user: any;
@@ -17,6 +18,7 @@ interface DiceRollerProps {
 }
 
 export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
+  const { t } = useTranslation();
   const [history, setHistory] = useState<any[]>([]);
   const [latestRoll, setLatestRoll] = useState<any>(null);
   const [animating, setAnimating] = useState(false);
@@ -84,22 +86,22 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
             </div>
             <div className="text-center mt-4 text-amber-400 font-bold">
               {latestRoll.playerName}
-              {latestRoll.type === 'attack' ? ` - Saldırı` : latestRoll.type === 'spell' ? ` - ${latestRoll.spellName}` : ` (d${latestRoll.sides})`}
+              {latestRoll.type === 'attack' ? ` - ${t('dice.attack')}` : latestRoll.type === 'spell' ? ` - ${latestRoll.spellName}` : ` (d${latestRoll.sides})`}
             </div>
             {latestRoll.type === 'attack' && (
                 <div className="text-center text-sm text-slate-300 mt-2 bg-slate-900/50 p-2 rounded">
-                    {latestRoll.isCrit && <span className="text-red-500 font-bold animate-pulse">KRİTİK VURUŞ! </span>}
-                    <span className="block">Hasar: {latestRoll.damage} ({latestRoll.damageType})</span>
+                    {latestRoll.isCrit && <span className="text-red-500 font-bold animate-pulse">{t('dice.crit')} </span>}
+                    <span className="block">{t('dice.damage')}: {latestRoll.damage} ({latestRoll.damageType})</span>
                 </div>
             )}
             {latestRoll.type === 'spell' && latestRoll.result === 'Büyü Yapıldı' && (
                 <div className="text-center text-sm text-slate-300 mt-2">
-                    {latestRoll.spellType === 'utility' ? 'İşlevsel Büyü' : 'Etki/Hasar uygulandı'}
+                    {latestRoll.spellType === 'utility' ? t('dice.utility') : t('dice.effect_applied')}
                 </div>
             )}
           </div>
         ) : (
-          <div className="text-slate-500">Zar bekleniyor...</div>
+          <div className="text-slate-500">{t('dice.waiting')}</div>
         )}
       </div>
 
@@ -117,7 +119,7 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
 
       <div className="h-48 bg-slate-900 rounded-lg p-2 overflow-y-auto border border-slate-700">
         <div className="flex items-center text-xs text-slate-400 mb-2 px-1">
-          <HistoryIcon className="w-3 h-3 mr-1" /> Son Atışlar
+          <HistoryIcon className="w-3 h-3 mr-1" /> {t('dice.last_rolls')}
         </div>
         <div className="space-y-2">
           {history.map((roll) => (
@@ -125,26 +127,26 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
               <div className="flex justify-between items-center">
                 <span className="text-slate-300 font-medium">{roll.playerName}</span>
                 <span className="text-slate-500 text-xs">
-                    {roll.type === 'attack' ? 'Saldırı' : roll.type === 'spell' ? 'Büyü' : `d${roll.sides}`}
+                    {roll.type === 'attack' ? t('dice.attack') : roll.type === 'spell' ? t('dice.spell') : `d${roll.sides}`}
                 </span>
               </div>
               {roll.type === 'attack' ? (
                   <div className="mt-1 text-xs grid grid-cols-2 gap-2">
                       <div className="bg-slate-900 p-1 rounded text-center">
-                          <div className="text-slate-500">Tutturma</div>
+                          <div className="text-slate-500">{t('dice.hit')}</div>
                           <div className={`font-bold ${roll.result === 20 ? 'text-green-400' : roll.result === 1 ? 'text-red-400' : 'text-white'}`}>
                               {roll.result} {roll.hitBonus >= 0 ? `+${roll.hitBonus}` : roll.hitBonus} = <span className="text-amber-400">{roll.result + parseInt(roll.hitBonus || 0)}</span>
                           </div>
                       </div>
                       <div className="bg-slate-900 p-1 rounded text-center">
-                          <div className="text-slate-500">Hasar</div>
+                          <div className="text-slate-500">{t('dice.damage')}</div>
                           <div className="font-bold text-red-400">{roll.damage}</div>
                       </div>
                   </div>
               ) : roll.type === 'spell' ? (
                   <div className="mt-1 text-xs">
                       <span className="text-purple-300 font-bold">{roll.spellName}</span>
-                      {roll.damage && <span className="ml-2 text-red-300">Hasar: {roll.damage}</span>}
+                      {roll.damage && <span className="ml-2 text-red-300">{t('dice.damage')}: {roll.damage}</span>}
                   </div>
               ) : (
                   <div className="text-right font-bold text-amber-400">{roll.result}</div>
