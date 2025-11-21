@@ -3,15 +3,20 @@ interface RuleEntry {
   type?: string;
   name?: string;
   entries?: (string | RuleEntry)[];
-  items?: string[];
+  items?: any[]; // Changed to any[] to handle mixed types
   caption?: string;
-  colLabels?: string[];
+  colLabels?: any[]; // Changed to any[]
   rows?: (string[] | { type: string; style?: string; row: string[] })[];
   href?: { type: string; path: string };
+  // Common fields in object items
+  entry?: string;
+  style?: string;
 }
 
 export const convertRulesToHtml = (entries: (string | RuleEntry)[]): string => {
   let html = '';
+
+  if (!entries || !Array.isArray(entries)) return html;
 
   for (const entry of entries) {
     if (typeof entry === 'string') {
@@ -24,7 +29,21 @@ export const convertRulesToHtml = (entries: (string | RuleEntry)[]): string => {
       if (entry.type === 'list' && entry.items) {
         html += '<ul>';
         entry.items.forEach(item => {
-          html += `<li>${processString(item)}</li>`;
+          if (typeof item === 'string') {
+            html += `<li>${processString(item)}</li>`;
+          } else {
+            // Handle object items (e.g. { type: 'item', name: '...', entry: '...' })
+            let content = '';
+            if (item.name) content += `<strong>${processString(item.name)}</strong>. `;
+            if (item.entry) content += processString(item.entry);
+            if (item.entries) content += convertRulesToHtml(item.entries);
+
+            // Fallback if generic object
+            if (!content) {
+                content = processString(item);
+            }
+            html += `<li>${content}</li>`;
+          }
         });
         html += '</ul>';
       } else if (entry.type === 'table' && entry.rows) {
@@ -41,18 +60,19 @@ export const convertRulesToHtml = (entries: (string | RuleEntry)[]): string => {
         }
         html += '<tbody>';
         entry.rows.forEach(rowItem => {
-          const row = Array.isArray(rowItem) ? rowItem : rowItem.row;
+          // Handle mixed row types: array or object { type: 'row', row: [...] }
+          const row = Array.isArray(rowItem) ? rowItem : (rowItem.row || []);
           html += '<tr>';
-          row.forEach(cell => {
-             // Handle complex cell if necessary, though usually strings in this JSON
-             const cellContent = typeof cell === 'string' ? processString(cell) : JSON.stringify(cell);
-             html += `<td class="border border-gray-600 p-2">${cellContent}</td>`;
-          });
+          if (Array.isArray(row)) {
+              row.forEach(cell => {
+                 const cellContent = processString(cell);
+                 html += `<td class="border border-gray-600 p-2">${cellContent}</td>`;
+              });
+          }
           html += '</tr>';
         });
         html += '</tbody></table>';
       } else if (entry.type === 'image' && entry.href) {
-          // Images might be local paths, for now just put a placeholder or skip
           // html += `<img src="${entry.href.path}" alt="Rule Image" />`;
       } else if (entry.entries) {
         html += convertRulesToHtml(entry.entries);
@@ -63,13 +83,19 @@ export const convertRulesToHtml = (entries: (string | RuleEntry)[]): string => {
   return html;
 };
 
-const processString = (str: string): string => {
+const processString = (str: any): string => {
+  if (typeof str !== 'string') {
+    if (str === null || str === undefined) return '';
+    if (typeof str === 'object') return JSON.stringify(str); // Fallback for debugging/safety
+    return String(str);
+  }
+
   // Simple replacements for internal links {@b ...}, {@i ...}
   return str
     .replace(/{@b (.*?)}/g, '<strong>$1</strong>')
     .replace(/{@i (.*?)}/g, '<em>$1</em>')
     .replace(/{@code (.*?)}/g, '<code>$1</code>')
-    .replace(/{@link (.*?)}/g, '<a href="#">$1</a>') // Simplified
+    .replace(/{@link (.*?)}/g, '<a href="#">$1</a>')
     .replace(/{@spell (.*?)}/g, '<span class="text-indigo-400">$1</span>')
     .replace(/{@condition (.*?)}/g, '<span class="text-red-400">$1</span>')
     .replace(/{@item (.*?)}/g, '<span class="text-yellow-400">$1</span>')
@@ -105,8 +131,8 @@ export const normalizeSpellData = (spell: any) => {
   if (spell.range) {
     if (spell.range.distance) {
        const dist = spell.range.distance;
-       if (dist.type === 'self') range = 'Kendisi'; // or Self
-       else if (dist.type === 'touch') range = 'Dokunma'; // or Touch
+       if (dist.type === 'self') range = 'Kendisi';
+       else if (dist.type === 'touch') range = 'Dokunma';
        else if (dist.type === 'sight') range = 'Görüş';
        else if (dist.type === 'unlimited') range = 'Sınırsız';
        else if (dist.amount) {
@@ -121,7 +147,7 @@ export const normalizeSpellData = (spell: any) => {
     const parts = [];
     if (spell.components.v) parts.push('V');
     if (spell.components.s) parts.push('S');
-    if (spell.components.m) parts.push('M'); // Ignore material description for short code
+    if (spell.components.m) parts.push('M');
     components = parts.join(', ');
   }
 
@@ -129,8 +155,8 @@ export const normalizeSpellData = (spell: any) => {
   let duration = '';
   if (spell.duration && spell.duration.length > 0) {
     const d = spell.duration[0];
-    if (d.type === 'instant') duration = 'Anlık'; // Instantaneous
-    else if (d.type === 'permanent') duration = 'Bozulana Kadar'; // Until Dispelled
+    if (d.type === 'instant') duration = 'Anlık';
+    else if (d.type === 'permanent') duration = 'Bozulana Kadar';
     else if (d.type === 'special') duration = 'Özel';
     else if (d.duration) {
        const unitMap: Record<string, string> = {
@@ -146,7 +172,7 @@ export const normalizeSpellData = (spell: any) => {
        const unit = unitMap[d.duration.type] || d.duration.type;
        duration = `${d.duration.amount} ${unit}`;
        if (d.concentration) {
-         duration = `Konsantrasyon, ${duration} kadar`; // Approximate match to constants
+         duration = `Konsantrasyon, ${duration} kadar`;
        }
     }
   }

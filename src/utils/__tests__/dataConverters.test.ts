@@ -46,4 +46,30 @@ describe('convertRulesToHtml', () => {
       expect(result).toContain('<p>Paragraph 1</p>');
       expect(result).toContain('<p>Paragraph 2</p>');
   });
+
+  it('should handle object items in lists (reproduction of crash)', () => {
+    const input = [
+      {
+        type: 'list',
+        items: [
+          'Item 1',
+          { type: 'item', name: 'Item 2', entry: 'Description' } // Object item
+        ]
+      }
+    ];
+
+    // This is expected to throw "TypeError: item.replace is not a function" with current code
+    expect(() => convertRulesToHtml(input as any)).not.toThrow();
+  });
+
+  it('should handle non-string colLabels (robustness)', () => {
+    const input = [
+        {
+            type: 'table',
+            colLabels: ['Header 1', { weird: 'object' }],
+            rows: [['cell']]
+        }
+    ];
+    expect(() => convertRulesToHtml(input as any)).not.toThrow();
+  });
 });
