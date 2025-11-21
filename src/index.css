@@ -47,7 +47,11 @@ a {
   overflow-y: auto !important;
   height: auto !important;
   min-height: 0 !important; /* Essential for nested flex scrolling */
-  padding-bottom: 1rem !important; /* Add some breathing room at bottom */
+  padding-bottom: 1rem !important;
+
+  /* Scrollbar Visibility improvements */
+  scrollbar-width: auto !important; /* Firefox: show scrollbar */
+  scrollbar-color: #888 #f1f1f1 !important; /* Firefox: thumb track */
 }
 
 .ql-toolbar {
@@ -59,20 +63,23 @@ a {
   border-bottom: 1px solid #e5e7eb !important;
 }
 
-/* Scrollbar styling for the editor */
+/* Scrollbar styling for the editor (Webkit) */
 .ql-editor::-webkit-scrollbar {
-  width: 8px;
+  width: 12px !important;
+  height: 12px !important;
 }
 
 .ql-editor::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #f1f1f1 !important;
+  border-left: 1px solid #ddd !important;
 }
 
 .ql-editor::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
+  background: #888 !important;
+  border-radius: 6px !important;
+  border: 2px solid #f1f1f1 !important; /* Creates padding effect */
 }
 
 .ql-editor::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #666 !important;
 }
