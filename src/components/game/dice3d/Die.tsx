@@ -2,6 +2,7 @@ import React, { useMemo, useEffect, useRef } from 'react';
 import { useBox, useConvexPolyhedron } from '@react-three/cannon';
 import { Text3D, Center, RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
+import { mergeVertices } from 'three-stdlib';
 import helvetikerRegular from 'three/examples/fonts/helvetiker_regular.typeface.json';
 
 interface DieProps {
@@ -35,27 +36,26 @@ const createGeometry = (sides: number) => {
 
 // Helper to get vertices and faces for convex polyhedron
 const toConvexProps = (bufferGeometry: THREE.BufferGeometry) => {
-    const geo = bufferGeometry.clone();
+    // Merge vertices to ensure we have a clean topology (shared vertices)
+    // This is critical for Cannon.js ConvexPolyhedron to work correctly without crashing on "triangle soup"
+    const geo = mergeVertices(bufferGeometry);
 
-    // If indexed
     let vertices: number[][] = [];
     let faces: number[][] = [];
 
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        vertices.push([pos.getX(i), pos.getY(i), pos.getZ(i)]);
+    }
+
+    // After merging, we should have an index
     if (geo.index) {
-       const pos = geo.attributes.position;
-       for (let i = 0; i < pos.count; i++) {
-           vertices.push([pos.getX(i), pos.getY(i), pos.getZ(i)]);
-       }
        const index = geo.index;
        for (let i = 0; i < index.count; i+=3) {
            faces.push([index.getX(i), index.getY(i), index.getZ(i)]);
        }
     } else {
-        // Non-indexed: every 3 vertices is a face
-        const pos = geo.attributes.position;
-        for (let i = 0; i < pos.count; i++) {
-            vertices.push([pos.getX(i), pos.getY(i), pos.getZ(i)]);
-        }
+        // Fallback if mergeVertices didn't index it (unlikely for primitives but safe to handle)
         for (let i = 0; i < pos.count; i+=3) {
             faces.push([i, i+1, i+2]);
         }
