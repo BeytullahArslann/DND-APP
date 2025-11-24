@@ -2,6 +2,7 @@ import React, { useMemo, useEffect, useState, useRef } from 'react';
 import { useBox, useConvexPolyhedron } from '@react-three/cannon';
 import { Text, RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
+import robotoFont from '../../../assets/fonts/Roboto-Bold.ttf';
 
 interface DieProps {
   id: string;
@@ -78,7 +79,8 @@ const FaceNumbers = ({ geometry, sides }: { geometry: THREE.BufferGeometry, side
         }
 
         // Generic Face Finding for non-cubes
-        const nonIndexed = geometry.toNonIndexed();
+        // Safely check if indexed before converting
+        const nonIndexed = geometry.index ? geometry.toNonIndexed() : geometry;
         const pos = nonIndexed.attributes.position.array;
         const norm = nonIndexed.attributes.normal.array;
         const foundFaces: {pos: THREE.Vector3, norm: THREE.Vector3}[] = [];
@@ -120,7 +122,7 @@ const FaceNumbers = ({ geometry, sides }: { geometry: THREE.BufferGeometry, side
                     anchorX="center"
                     anchorY="middle"
                     fillOpacity={0.9}
-                    font="/fonts/Roboto-Bold.ttf"
+                    font={robotoFont}
                 >
                     {d.num}
                 </Text>
@@ -145,7 +147,7 @@ const Die = ({ id, sides, position, onSettled }: DieProps) => {
            ];
        }
 
-       const nonIndexed = geometry.toNonIndexed();
+       const nonIndexed = geometry.index ? geometry.toNonIndexed() : geometry;
        const pos = nonIndexed.attributes.position.array;
        const norm = nonIndexed.attributes.normal.array;
        const foundFaces: {pos: THREE.Vector3, norm: THREE.Vector3}[] = [];
