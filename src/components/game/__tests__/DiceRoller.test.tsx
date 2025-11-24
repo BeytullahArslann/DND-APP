@@ -141,4 +141,41 @@ describe('DiceRoller Component', () => {
         })
     );
   });
+
+  it('retains selection after roll', async () => {
+    render(<DiceRoller user={mockUser} roomCode={mockRoomCode} />);
+
+    // 1. Select a die
+    const d6Btn = screen.getByText('6', { selector: 'span' }).closest('button');
+    fireEvent.click(d6Btn!);
+
+    // Verify selection is 1x
+    expect(screen.getByText('1x')).toBeInTheDocument();
+
+    // 2. Click Roll Button
+    const rollBtn = screen.getByText('ZAR AT!');
+    fireEvent.click(rollBtn);
+
+    // 3. Advance timers to finish roll
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    // 4. Verify selection is still there (it used to be cleared)
+    expect(screen.getByText('1x')).toBeInTheDocument();
+    expect(screen.getByText('d6')).toBeInTheDocument();
+
+    // 5. Verify manual clear works
+    // Find the trash button by finding the button inside the selection pill
+    // The selection pill has a class "bg-[#5D4037]" and contains the trash button
+
+    // Alternative: Find button with Trash2 icon. Since it's an SVG, we can query by SVG or button role.
+    // Let's use `container.querySelector` or look for the button with specific class.
+    const trashButton = screen.getAllByRole('button').find(b => b.classList.contains('text-red-300'));
+
+    expect(trashButton).toBeDefined();
+    fireEvent.click(trashButton!);
+
+    expect(screen.queryByText('1x')).not.toBeInTheDocument();
+  });
 });
