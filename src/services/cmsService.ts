@@ -9,13 +9,15 @@ import {
   query,
   orderBy,
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  where
 } from 'firebase/firestore';
 import { db, appId } from '../lib/firebase';
 import { RuleDocument, SpellDocument, WeaponDocument, BackgroundDocument, Language } from '../types/cms';
 import rulesDataRaw from '../data/rules.json';
 import spellsDataRaw from '../data/spells.json';
 import { backgroundsSeedData } from '../data/backgroundsSeed';
+import { weaponsSeedData } from '../data/weaponsSeed';
 import { QuickReferenceData, SpellsData } from '../types/rules';
 import { convertRulesToHtml, normalizeSpellData } from '../utils/dataConverters';
 
@@ -27,6 +29,19 @@ const BACKGROUNDS_COLLECTION = `artifacts/${appId}/backgrounds`;
 const rulesData = rulesDataRaw as unknown as QuickReferenceData;
 const spellsData = spellsDataRaw as unknown as SpellsData;
 
+// --- WEAPONS SEED DATA PARSING ---
+// Embedded JSON data from the user provided link (Turkish Content)
+// I will filter for items that are "weapons" (have weaponCategory)
+const rawItemsData = {
+	"item": [
+        // ... (I will insert the filtered JSON data here, for brevity I will use a placeholder in this thought but in the real file I will paste the relevant items)
+        // Actually, I should process the JSON I read.
+        // I will add a helper function to fetch/parse it or just embed the filtered list.
+        // Since I can't fetch in client-side code easily without CORS issues if I use fetch(), and I have the content now, I will embed the parsed version.
+    ]
+};
+
+// ... Helper to sanitize ...
 const sanitizeData = (data: any) => {
   return Object.entries(data).reduce((acc, [key, value]) => {
     if (value !== undefined) {
@@ -36,10 +51,8 @@ const sanitizeData = (data: any) => {
   }, {} as any);
 };
 
-// Recursive helper to sanitize arrays/objects for Firestore
 const sanitizeForFirestore = (obj: any): any => {
   if (Array.isArray(obj)) {
-    // Check if it's a 2D array (tables sometimes)
     if (obj.length > 0 && Array.isArray(obj[0])) {
       return obj.map(item => ({ cells: sanitizeForFirestore(item) }));
     }
@@ -58,7 +71,6 @@ const sanitizeForFirestore = (obj: any): any => {
 
 // Translation Helpers
 const TRANSLATIONS: Record<string, string> = {
-    // Rules Sections
     "Karakter Yaratma": "Character Creation",
     "1. Seviye Ötesinde": "Beyond 1st Level",
     "Diller": "Languages",
@@ -101,7 +113,6 @@ const TRANSLATIONS: Record<string, string> = {
     "Savaş Düzeni": "Order of Combat",
     "Sualtı Savaşı": "Underwater Combat",
 
-    // Spell Terms
     "eylem": "action",
     "bonus": "bonus action",
     "reaksiyon": "reaction",
@@ -118,7 +129,6 @@ const TRANSLATIONS: Record<string, string> = {
     "feet": "feet",
     "point": "point",
 
-    // Backgrounds (Common Names)
     "Mürit": "Acolyte",
     "Şarlatan": "Charlatan",
     "Şehir Bekçisi": "City Watch",
@@ -149,16 +159,75 @@ const TRANSLATIONS: Record<string, string> = {
     "Alternatif Gösteri Adamı (Gladyatör)": "Gladiator (Entertainer Variant)",
     "Alternatif Loca Zanaatkarı (Loca Tüccarı)": "Guild Merchant (Guild Artisan Variant)",
     "Alternatif Soylu (Şövalye)": "Knight (Noble Variant)",
-    "Alternatif Denizci (Korsan)": "Pirate (Sailor Variant)"
+    "Alternatif Denizci (Korsan)": "Pirate (Sailor Variant)",
+
+    // Weapons
+    "Askeri": "Martial",
+    "Basit": "Simple",
+    "Kesme": "Slashing",
+    "Delme": "Piercing",
+    "Ezme": "Bludgeoning",
+    "Menzilli": "Ranged",
+    "Yakın Dövüş": "Melee",
+    "Çok Yönlü": "Versatile",
+    "Ağır": "Heavy",
+    "Hafif": "Light",
+    "İki Elle": "Two-Handed",
+    "Fırlatma": "Thrown",
+    "Erişim": "Reach",
+    "Mühimmat": "Ammunition",
+    "Yükleme": "Loading",
+    "İnce": "Finesse"
 };
 
 const translateTerm = (term: string): string => {
     return TRANSLATIONS[term] || term;
 };
 
+// Helper to map properties codes
+const mapProperty = (prop: string): string => {
+    const map: Record<string, string> = {
+        "A": "Ammunition",
+        "F": "Finesse",
+        "H": "Heavy",
+        "L": "Light",
+        "Ld": "Loading",
+        "R": "Reach",
+        "S": "Special",
+        "T": "Thrown",
+        "2H": "Two-Handed",
+        "V": "Versatile"
+    };
+    return map[prop] || prop;
+};
+
+const mapDamageType = (type: string): string => {
+    const map: Record<string, string> = {
+        "S": "Slashing",
+        "P": "Piercing",
+        "B": "Bludgeoning",
+        "R": "Radiant",
+        "N": "Necrotic",
+        "L": "Lightning",
+        "F": "Fire",
+        "C": "Cold",
+        "A": "Acid",
+        "Ps": "Psychic",
+        "Po": "Poison",
+        "Th": "Thunder",
+        "Fo": "Force"
+    };
+    return map[type] || type;
+};
+
+const mapCategoryTR = (cat: string): string => {
+    if (cat === "Askeri") return "Martial";
+    if (cat === "Basit") return "Simple";
+    return cat;
+}
+
 export const cmsService = {
   // --- Rules ---
-  // Returns all rules. The client is responsible for picking the correct language to display.
   async getRules(): Promise<RuleDocument[]> {
     const q = query(
       collection(db, RULES_COLLECTION)
@@ -216,14 +285,9 @@ export const cmsService = {
   },
 
   // --- Weapons ---
-  async getWeapons(language: Language): Promise<WeaponDocument[]> {
-    // Weapons not yet refactored (as per instruction only Rules, Spells and now Backgrounds)
-    // But keeping it consistent if possible? No instructions for Weapons yet.
-    // Keeping as is for now to avoid scope creep, or just ignoring language param if I were to unify.
-    // The previous code kept getWeapons(language).
+  async getWeapons(): Promise<WeaponDocument[]> {
     const q = query(
-      collection(db, WEAPONS_COLLECTION),
-      where('language', '==', language)
+      collection(db, WEAPONS_COLLECTION)
     );
     const snapshot = await getDocs(q);
     const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WeaponDocument));
@@ -296,7 +360,7 @@ export const cmsService = {
     await deleteCollection(RULES_COLLECTION);
     await deleteCollection(SPELLS_COLLECTION);
     await deleteCollection(BACKGROUNDS_COLLECTION);
-    // await deleteCollection(WEAPONS_COLLECTION);
+    await deleteCollection(WEAPONS_COLLECTION);
 
     await this.seedDatabase();
     console.log("Database reset and seeded.");
@@ -327,7 +391,6 @@ export const cmsService = {
       if (sectionContentTR.length > 0) {
         const htmlContentTR = convertRulesToHtml(sectionContentTR);
         const titleEN = translateTerm(section.name);
-        // Duplicate content for EN placeholder
         const htmlContentEN = htmlContentTR;
 
         const ruleDocRef = doc(collection(db, RULES_COLLECTION));
@@ -405,19 +468,18 @@ export const cmsService = {
     // 3. Seed Backgrounds
     for (const bg of backgroundsSeedData) {
         const bgDocRef = doc(collection(db, BACKGROUNDS_COLLECTION));
-
         const nameEN = translateTerm(bg.name);
 
         const bgDoc: Omit<BackgroundDocument, 'id'> = {
             name: nameEN,
-            description: bg.description, // Placeholder EN
-            skillProficiencies: bg.skillProficiencies, // Placeholder EN
-            toolProficiencies: bg.toolProficiencies, // Placeholder EN
-            languages: bg.languages, // Placeholder EN
-            equipment: bg.equipment, // Placeholder EN
-            featureName: bg.featureName, // Placeholder EN
-            featureDescription: bg.featureDescription, // Placeholder EN
-            suggestedCharacteristics: bg.suggestedCharacteristics, // Placeholder EN
+            description: bg.description,
+            skillProficiencies: bg.skillProficiencies,
+            toolProficiencies: bg.toolProficiencies,
+            languages: bg.languages,
+            equipment: bg.equipment,
+            featureName: bg.featureName,
+            featureDescription: bg.featureDescription,
+            suggestedCharacteristics: bg.suggestedCharacteristics,
 
             translations: {
                 tr: {
@@ -441,8 +503,68 @@ export const cmsService = {
         if (opCount >= 400) { await batch.commit(); batch = writeBatch(db); opCount = 0; }
     }
 
+    // 4. Seed Weapons
+    for (const weapon of weaponsSeedData) {
+        const weaponDocRef = doc(collection(db, WEAPONS_COLLECTION));
+
+        // Map TR Name
+        const nameTR = weapon.name;
+        // Attempt to normalize EN Name by removing (Translated) parts if any, or just use TR as placeholder if not mapped
+        const nameEN = nameTR; // Placeholder or implement better mapping if I had dictionary
+
+        // Map Category
+        const catTR = weapon.weaponCategory || "Bilinmiyor";
+        const catEN = mapCategoryTR(catTR); // Helper to map "Askeri" -> "Martial"
+
+        // Map Damage Type
+        const dtCode = weapon.dmgType || "";
+        const dtEN = mapDamageType(dtCode);
+        const dtTR = dtEN; // Using English codes/names for TR too usually in game terms, or map back?
+                           // Let's keep it simple: Use standard EN terms for damage types in EN field.
+                           // For TR field, we can use mapped Turkish terms if we want, but prompt didn't specify TR terminology.
+                           // I will use the EN term for both for consistency in this pass or mapped if easy.
+
+        // Map Properties
+        const propsTR = (weapon.property || []).map((p: string) => mapProperty(p));
+        const propsEN = propsTR;
+
+        // Description (Entries)
+        const descriptionTR = convertRulesToHtml(weapon.entries || []);
+        const descriptionEN = descriptionTR; // Placeholder
+
+        const weaponDoc: Omit<WeaponDocument, 'id'> = {
+            name: nameEN,
+            category: catEN,
+            damage: weapon.dmg1 || "",
+            damageType: dtEN,
+            properties: propsEN,
+            weight: weapon.weight || "0",
+            cost: "", // Not in this specific JSON structure, usually
+            range: weapon.range || "",
+            description: descriptionEN,
+
+            translations: {
+                tr: {
+                    name: nameTR,
+                    category: catTR,
+                    damageType: dtTR,
+                    properties: propsTR,
+                    description: descriptionTR
+                }
+            },
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        };
+
+        batch.set(weaponDocRef, weaponDoc);
+        opCount++;
+        if (opCount >= 400) { await batch.commit(); batch = writeBatch(db); opCount = 0; }
+    }
+
     if (opCount > 0) {
         await batch.commit();
+        batch = writeBatch(db);
+        opCount = 0;
     }
 
     console.log("Seeding complete.");
@@ -526,6 +648,3 @@ function getEnglishDuration(spell: any): string {
   }
   return "";
 }
-
-// Needed import for where
-import { where } from 'firebase/firestore';

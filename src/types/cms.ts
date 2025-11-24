@@ -47,13 +47,14 @@ export interface SpellDocument extends CMSDocument {
 
 export interface WeaponDocument extends CMSDocument {
   name: string; // EN
-  category: string;
+  category: string; // EN (Simple, Martial)
   damage: string;
-  damageType: string;
-  properties: string[];
+  damageType: string; // EN (slashing, etc)
+  properties: string[]; // EN (Light, Finesse)
   weight?: string;
   cost?: string;
   range?: string;
+  description?: string; // EN (HTML) - Added for Magic Weapons info
 
   translations?: {
     tr?: {
@@ -61,6 +62,7 @@ export interface WeaponDocument extends CMSDocument {
       category?: string;
       damageType?: string;
       properties?: string[];
+      description?: string;
     }
   };
 }
@@ -90,6 +92,5 @@ export interface BackgroundDocument extends CMSDocument {
     }
   };
 }
-// Export Language type for backward compatibility helper if needed,
-// though we are removing the language field from the document itself.
+
 export type Language = 'tr' | 'en';

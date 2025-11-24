@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Book, Sparkles, Menu, Globe } from 'lucide-react';
+import { Book, Sparkles, Menu, Globe, Sword } from 'lucide-react';
 import RulesRenderer from '../components/rules/RulesRenderer';
 import SpellsList from '../components/rules/SpellsList';
 import { cmsService } from '../services/cmsService';
-import { RuleDocument, SpellDocument, Language } from '../types/cms';
+import { RuleDocument, SpellDocument, WeaponDocument, Language } from '../types/cms';
 import { Spell, SpellsData } from '../types/rules';
 
 const GameRulesPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'rules' | 'spells'>('rules');
+  const [activeTab, setActiveTab] = useState<'rules' | 'spells' | 'weapons'>('rules');
   const [language, setLanguage] = useState<Language>('tr');
   const [rules, setRules] = useState<RuleDocument[]>([]);
   const [spells, setSpells] = useState<SpellDocument[]>([]);
+  const [weapons, setWeapons] = useState<WeaponDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [activeChapterId, setActiveChapterId] = useState<string>('');
@@ -20,13 +21,14 @@ const GameRulesPage: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch all data (containing both languages)
-        const [rulesData, spellsData] = await Promise.all([
+        const [rulesData, spellsData, weaponsData] = await Promise.all([
           cmsService.getRules(),
-          cmsService.getSpells()
+          cmsService.getSpells(),
+          cmsService.getWeapons()
         ]);
         setRules(rulesData);
         setSpells(spellsData);
+        setWeapons(weaponsData);
         if (rulesData.length > 0 && !activeChapterId) {
             setActiveChapterId(rulesData[0].id || '');
         }
@@ -37,7 +39,7 @@ const GameRulesPage: React.FC = () => {
       }
     };
     fetchData();
-  }, []); // Run once on mount
+  }, []);
 
   const activeRule = rules.find(r => r.id === activeChapterId);
 
@@ -54,6 +56,22 @@ const GameRulesPage: React.FC = () => {
   };
 
   const localizedActiveRule = activeRule ? getLocalizedRule(activeRule) : null;
+
+  // Helper to get localized weapon
+  const getLocalizedWeapon = (weapon: WeaponDocument) => {
+      if (language === 'en') return weapon;
+      if (language === 'tr' && weapon.translations?.tr) {
+          return {
+              ...weapon,
+              name: weapon.translations.tr.name || weapon.name,
+              category: weapon.translations.tr.category || weapon.category,
+              damageType: weapon.translations.tr.damageType || weapon.damageType,
+              properties: weapon.translations.tr.properties || weapon.properties,
+              description: weapon.translations.tr.description || weapon.description
+          };
+      }
+      return weapon;
+  }
 
   // Convert SpellDocument to Spell interface for SpellsList compatibility
   const convertedSpellsData: SpellsData = {
@@ -125,8 +143,8 @@ const GameRulesPage: React.FC = () => {
 
           return {
               name: name,
-              level: s.level, // Shared
-              school: s.school, // Shared (Code)
+              level: s.level,
+              school: s.school,
               time,
               range,
               components,
@@ -142,28 +160,39 @@ const GameRulesPage: React.FC = () => {
     <div className="h-[calc(100vh-4rem)] flex flex-col bg-gray-900 text-gray-100 overflow-hidden">
       {/* Header Tabs */}
       <div className="bg-gray-800 border-b border-gray-700 p-4 flex items-center justify-between shrink-0">
-        <div className="flex space-x-4">
+        <div className="flex space-x-4 overflow-x-auto">
           <button
             onClick={() => setActiveTab('rules')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
               activeTab === 'rules'
                 ? 'bg-indigo-600 text-white'
                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
             }`}
           >
             <Book size={18} />
-            <span>Kurallar</span>
+            <span>{language === 'tr' ? 'Kurallar' : 'Rules'}</span>
           </button>
           <button
             onClick={() => setActiveTab('spells')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
               activeTab === 'spells'
                 ? 'bg-purple-600 text-white'
                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
             }`}
           >
             <Sparkles size={18} />
-            <span>Büyüler</span>
+            <span>{language === 'tr' ? 'Büyüler' : 'Spells'}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('weapons')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
+              activeTab === 'weapons'
+                ? 'bg-red-600 text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+            }`}
+          >
+            <Sword size={18} />
+            <span>{language === 'tr' ? 'Silahlar' : 'Weapons'}</span>
           </button>
         </div>
 
@@ -206,7 +235,9 @@ const GameRulesPage: React.FC = () => {
                     shrink-0 overflow-y-auto custom-scrollbar
                 `}>
                     <div className="p-4">
-                    <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Bölümler</h2>
+                    <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">
+                        {language === 'tr' ? 'Bölümler' : 'Chapters'}
+                    </h2>
                     <nav className="space-y-1">
                         {rules.map((rule) => {
                            const loc = getLocalizedRule(rule);
@@ -255,13 +286,48 @@ const GameRulesPage: React.FC = () => {
                         </div>
                     ) : (
                         <div className="text-center text-gray-500 mt-20">
-                            İçerik bulunamadı. Admin panelinden içerik ekleyin veya veritabanını tohumlayın.
+                            {language === 'tr'
+                                ? 'İçerik bulunamadı. Admin panelinden içerik ekleyin veya veritabanını tohumlayın.'
+                                : 'Content not found. Add content via Admin panel or seed database.'}
                         </div>
                     )}
                     </div>
-                ) : (
+                ) : activeTab === 'spells' ? (
                     <div className="h-full max-w-6xl mx-auto animate-in slide-in-from-bottom-2 duration-300">
                         <SpellsList data={convertedSpellsData} />
+                    </div>
+                ) : (
+                    <div className="h-full max-w-6xl mx-auto animate-in slide-in-from-bottom-2 duration-300">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {weapons.map((weapon) => {
+                                const w = getLocalizedWeapon(weapon);
+                                return (
+                                    <div key={w.id} className="bg-gray-800 p-4 rounded border border-gray-700 flex flex-col">
+                                        <div className="mb-2">
+                                            <h3 className="font-bold text-lg text-red-400">{w.name}</h3>
+                                            <p className="text-xs text-gray-500">{w.category} • {w.range ? `${w.range} ft` : 'Melee'}</p>
+                                        </div>
+                                        <div className="text-sm mb-2">
+                                            <span className="font-mono bg-gray-900 px-2 py-1 rounded text-yellow-500">
+                                                {w.damage} {w.damageType}
+                                            </span>
+                                        </div>
+                                        {w.properties && w.properties.length > 0 && (
+                                            <div className="flex flex-wrap gap-1 mb-2">
+                                                {w.properties.map(p => (
+                                                    <span key={p} className="text-xs bg-gray-700 px-2 py-0.5 rounded text-gray-300">
+                                                        {p}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {w.description && (
+                                            <div className="mt-2 text-sm text-gray-400 border-t border-gray-700 pt-2" dangerouslySetInnerHTML={{ __html: w.description }} />
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
                 </main>
