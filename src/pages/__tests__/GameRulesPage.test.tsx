@@ -8,14 +8,14 @@ import { cmsService } from '../../services/cmsService';
 vi.mock('../../services/cmsService', () => ({
   cmsService: {
     getRules: vi.fn(),
-    getSpells: vi.fn()
+    getSpells: vi.fn(),
+    getWeapons: vi.fn()
   }
 }));
 
 const mockRules = [
   {
     id: '1',
-    language: 'tr',
     title: 'Test Section',
     order: 0,
     content: [
@@ -31,7 +31,6 @@ const mockRules = [
 const mockSpells = [
   {
     id: '1',
-    language: 'tr',
     name: 'Fireball',
     level: 3,
     school: 'V',
@@ -44,11 +43,25 @@ const mockSpells = [
   }
 ];
 
+const mockWeapons = [
+    {
+        id: '1',
+        name: 'Longsword',
+        category: 'Martial Melee',
+        damage: '1d8',
+        damageType: 'slashing',
+        properties: ['Versatile (1d10)'],
+        weight: '3 lb.',
+        cost: '15 gp'
+    }
+]
+
 describe('GameRulesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (cmsService.getRules as any).mockResolvedValue(mockRules);
     (cmsService.getSpells as any).mockResolvedValue(mockSpells);
+    (cmsService.getWeapons as any).mockResolvedValue(mockWeapons);
   });
 
   it('renders rules tab by default after loading', async () => {
@@ -82,7 +95,10 @@ describe('GameRulesPage', () => {
     fireEvent.click(spellsTab);
 
     expect(screen.getByPlaceholderText('Büyü ara...')).toBeInTheDocument();
-    expect(screen.getByText('Fireball')).toBeInTheDocument();
+    // Wait for spells to render
+    await waitFor(() => {
+        expect(screen.getByText('Fireball')).toBeInTheDocument();
+    });
   });
 
   it('expands spell details', async () => {
@@ -96,9 +112,36 @@ describe('GameRulesPage', () => {
         expect(screen.queryByText('Yükleniyor...')).not.toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Büyüler'));
+    const spellsTab = screen.getByText('Büyüler');
+    fireEvent.click(spellsTab);
+
+    // Wait for the list to appear
+    await waitFor(() => {
+        expect(screen.getByText('Fireball')).toBeInTheDocument();
+    });
+
     fireEvent.click(screen.getByText('Fireball'));
 
     expect(screen.getByText('A bright streak flashes...')).toBeInTheDocument();
+  });
+
+  it('switches to weapons tab and displays weapon', async () => {
+      render(
+        <BrowserRouter>
+          <GameRulesPage />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+          expect(screen.queryByText('Yükleniyor...')).not.toBeInTheDocument();
+      });
+
+      const weaponsTab = screen.getByText('Silahlar');
+      fireEvent.click(weaponsTab);
+
+      await waitFor(() => {
+          expect(screen.getByText('Longsword')).toBeInTheDocument();
+      });
+      expect(screen.getByText('1d8 slashing')).toBeInTheDocument();
   });
 });
