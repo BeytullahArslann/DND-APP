@@ -1,51 +1,95 @@
-import { RuleEntry } from './rules';
 
-export type Language = 'tr' | 'en';
+export interface LocalizedContent<T> {
+  en: T;
+  tr?: T;
+}
 
 export interface CMSDocument {
   id?: string;
-  language: Language;
   createdAt?: any;
   updatedAt?: any;
 }
 
 export interface RuleDocument extends CMSDocument {
-  title: string; // Section name (e.g., "Savaş", "Combat")
-  content: RuleEntry[]; // The recursive JSON structure
-  order: number; // To sort sections
+  title: string; // EN Title (mandatory)
+  content: any; // EN Content (mandatory), string or structure
+  translations?: {
+    tr?: {
+        title: string;
+        content: any;
+    }
+  };
+  order: number;
 }
 
 export interface SpellDocument extends CMSDocument {
-  name: string;
+  name: string; // EN
   level: number;
   school: string;
-  time: string; // Simplified string for UI, or keep complex object
-  range: string;
-  components: string;
-  duration: string;
-  description: string; // Flattened entries for simpler editing if possible, or keep complex
+  time: string; // EN
+  range: string; // EN
+  components: string; // EN
+  duration: string; // EN
+  description: string; // EN
   classes: string[];
+
+  translations?: {
+    tr?: {
+      name: string;
+      time?: string;
+      range?: string;
+      components?: string;
+      duration?: string;
+      description?: string;
+    }
+  };
 }
 
 export interface WeaponDocument extends CMSDocument {
-  name: string;
-  category: string; // Simple Melee, Martial Ranged etc.
-  damage: string; // e.g., "1d8"
-  damageType: string; // e.g., "slashing"
-  properties: string[]; // e.g., ["Light", "Finesse"]
+  name: string; // EN
+  category: string;
+  damage: string;
+  damageType: string;
+  properties: string[];
   weight?: string;
   cost?: string;
-  range?: string; // "20/60"
+  range?: string;
+
+  translations?: {
+    tr?: {
+      name: string;
+      category?: string;
+      damageType?: string;
+      properties?: string[];
+    }
+  };
 }
 
 export interface BackgroundDocument extends CMSDocument {
-  name: string;
-  description: string; // HTML or text
-  skillProficiencies: string;
-  toolProficiencies: string;
-  languages: string;
-  equipment: string; // HTML or text
-  featureName: string;
-  featureDescription: string; // HTML or text
-  suggestedCharacteristics: string; // HTML (tables)
+  name: string; // EN
+  description: string; // EN
+  skillProficiencies: string; // EN
+  toolProficiencies: string; // EN
+  languages: string; // EN
+  equipment: string; // EN
+  featureName: string; // EN
+  featureDescription: string; // EN
+  suggestedCharacteristics: string; // EN
+
+  translations?: {
+    tr?: {
+      name: string;
+      description?: string;
+      skillProficiencies?: string;
+      toolProficiencies?: string;
+      languages?: string;
+      equipment?: string;
+      featureName?: string;
+      featureDescription?: string;
+      suggestedCharacteristics?: string;
+    }
+  };
 }
+// Export Language type for backward compatibility helper if needed,
+// though we are removing the language field from the document itself.
+export type Language = 'tr' | 'en';
