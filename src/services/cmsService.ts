@@ -18,6 +18,7 @@ import rulesDataRaw from '../data/rules.json';
 import spellsDataRaw from '../data/spells.json';
 import { backgroundsSeedData } from '../data/backgroundsSeed';
 import { weaponsSeedData } from '../data/weaponsSeed';
+import { armorsSeedData } from '../data/armorsSeed';
 import { QuickReferenceData, SpellsData } from '../types/rules';
 import { convertRulesToHtml, normalizeSpellData } from '../utils/dataConverters';
 
@@ -29,18 +30,6 @@ const BACKGROUNDS_COLLECTION = `artifacts/${appId}/backgrounds`;
 
 const rulesData = rulesDataRaw as unknown as QuickReferenceData;
 const spellsData = spellsDataRaw as unknown as SpellsData;
-
-// --- WEAPONS SEED DATA PARSING ---
-// Embedded JSON data from the user provided link (Turkish Content)
-// I will filter for items that are "weapons" (have weaponCategory)
-const rawItemsData = {
-	"item": [
-        // ... (I will insert the filtered JSON data here, for brevity I will use a placeholder in this thought but in the real file I will paste the relevant items)
-        // Actually, I should process the JSON I read.
-        // I will add a helper function to fetch/parse it or just embed the filtered list.
-        // Since I can't fetch in client-side code easily without CORS issues if I use fetch(), and I have the content now, I will embed the parsed version.
-    ]
-};
 
 // ... Helper to sanitize ...
 const sanitizeData = (data: any) => {
@@ -583,6 +572,19 @@ export const cmsService = {
         };
 
         batch.set(weaponDocRef, weaponDoc);
+        opCount++;
+        if (opCount >= 400) { await batch.commit(); batch = writeBatch(db); opCount = 0; }
+    }
+
+    // 5. Seed Armors
+    for (const armor of armorsSeedData) {
+        const armorDocRef = doc(collection(db, ARMORS_COLLECTION));
+        const armorDoc: Omit<import('../types/cms').ArmorDocument, 'id'> = {
+            ...armor,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        };
+        batch.set(armorDocRef, armorDoc);
         opCount++;
         if (opCount >= 400) { await batch.commit(); batch = writeBatch(db); opCount = 0; }
     }
