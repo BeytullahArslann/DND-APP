@@ -48,9 +48,15 @@ export interface SpellDocument extends CMSDocument {
 export interface WeaponDocument extends CMSDocument {
   name: string; // EN
   category: string; // EN (Simple, Martial)
-  damage: string;
+  damage: string; // e.g., "1d8"
   damageType: string; // EN (slashing, etc)
   properties: string[]; // EN (Light, Finesse)
+
+  // Categorical Data
+  diceCount?: number;
+  diceValue?: string; // d4, d6, d8, d10, d12, 2d6 etc (stored as string "d8")
+  damageBonus?: number;
+
   weight?: string;
   cost?: string;
   range?: string;
@@ -67,11 +73,39 @@ export interface WeaponDocument extends CMSDocument {
   };
 }
 
+export interface ArmorDocument extends CMSDocument {
+  name: string; // EN
+  type: 'Light' | 'Medium' | 'Heavy' | 'Shield';
+  ac: number;
+  dexBonus: 'None' | 'Full' | 'Max 2'; // Mechanic
+  stealthDisadvantage: boolean;
+  strengthRequirement: number;
+  weight?: string;
+  cost?: string;
+  description?: string;
+
+  translations?: {
+    tr?: {
+      name: string;
+      type?: string;
+      description?: string;
+    }
+  };
+}
+
 export interface BackgroundDocument extends CMSDocument {
   name: string; // EN
   description: string; // EN
-  skillProficiencies: string; // EN
-  toolProficiencies: string; // EN
+
+  // Legacy / Display fields
+  skillProficiencies: string; // Text description
+  toolProficiencies: string; // Text description
+
+  // Structured Data
+  bonuses?: {
+      skills?: string[]; // Array of skill keys (e.g., ['athletics', 'history'])
+  };
+
   languages: string; // EN
   equipment: string; // EN
   featureName: string; // EN

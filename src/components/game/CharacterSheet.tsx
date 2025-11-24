@@ -15,68 +15,56 @@ import {
   ChevronUp,
   Eye,
   Target,
-  Zap
+  Zap,
+  Book,
+  Shield,
+  Dices
 } from 'lucide-react';
 import { calculateCasterLevel, formatModifier, getModifier, parseDamage } from '../../utils/stats.js';
 import { db, appId } from '../../lib/firebase';
 import { useTranslation } from 'react-i18next';
+import { cmsService } from '../../services/cmsService';
+import { WeaponDocument, ArmorDocument, BackgroundDocument } from '../../types/cms';
 
 // --- 5eTürkçe (Kanguen) Kural Setleri ---
 
 const STAT_LABELS: any = { str: "KUV", dex: "ÇEV", con: "DAY", int: "ZEK", wis: "AKI", cha: "KAR" };
 
 const SKILLS_LIST = [
-  { name: "Akrobasi (Acrobatics)", stat: "dex" },
-  { name: "Hayvan Terbiyesi (Animal Handling)", stat: "wis" },
-  { name: "Arkana (Arcana)", stat: "int" },
-  { name: "Atletizm (Athletics)", stat: "str" },
-  { name: "Yalan (Deception)", stat: "cha" },
-  { name: "Tarih (History)", stat: "int" },
-  { name: "Sezgi (Insight)", stat: "wis" },
-  { name: "Gözdağı (Intimidation)", stat: "cha" },
-  { name: "Araştırma (Investigation)", stat: "int" },
-  { name: "Tıp (Medicine)", stat: "wis" },
-  { name: "Doğa (Nature)", stat: "int" },
-  { name: "Algı (Perception)", stat: "wis" },
-  { name: "Performans (Performance)", stat: "cha" },
-  { name: "İkna (Persuasion)", stat: "cha" },
-  { name: "Din (Religion)", stat: "int" },
-  { name: "El Çabukluğu (Sleight of Hand)", stat: "dex" },
-  { name: "Gizlilik (Stealth)", stat: "dex" },
-  { name: "Hayatta Kalma (Survival)", stat: "wis" }
+  { name: "Akrobasi (Acrobatics)", key: "acrobatics", stat: "dex" },
+  { name: "Hayvan Terbiyesi (Animal Handling)", key: "animal_handling", stat: "wis" },
+  { name: "Arkana (Arcana)", key: "arcana", stat: "int" },
+  { name: "Atletizm (Athletics)", key: "athletics", stat: "str" },
+  { name: "Yalan (Deception)", key: "deception", stat: "cha" },
+  { name: "Tarih (History)", key: "history", stat: "int" },
+  { name: "Sezgi (Insight)", key: "insight", stat: "wis" },
+  { name: "Gözdağı (Intimidation)", key: "intimidation", stat: "cha" },
+  { name: "Araştırma (Investigation)", key: "investigation", stat: "int" },
+  { name: "Tıp (Medicine)", key: "medicine", stat: "wis" },
+  { name: "Doğa (Nature)", key: "nature", stat: "int" },
+  { name: "Algı (Perception)", key: "perception", stat: "wis" },
+  { name: "Performans (Performance)", key: "performance", stat: "cha" },
+  { name: "İkna (Persuasion)", key: "persuasion", stat: "cha" },
+  { name: "Din (Religion)", key: "religion", stat: "int" },
+  { name: "El Çabukluğu (Sleight of Hand)", key: "sleight_of_hand", stat: "dex" },
+  { name: "Gizlilik (Stealth)", key: "stealth", stat: "dex" },
+  { name: "Hayatta Kalma (Survival)", key: "survival", stat: "wis" }
 ];
-
-const BACKGROUNDS_DATA: any = {
-  "Asker": { skills: ["Atletizm (Athletics)", "Gözdağı (Intimidation)"] },
-  "Bilge": { skills: ["Arkana (Arcana)", "Tarih (History)"] },
-  "Eğlencebaz": { skills: ["Akrobasi (Acrobatics)", "Performans (Performance)"] },
-  "Halk Kahramanı": { skills: ["Hayvan Terbiyesi (Animal Handling)", "Hayatta Kalma (Survival)"] },
-  "Hünkar": { skills: ["Tarih (History)", "İkna (Persuasion)"] },
-  "Keşiş": { skills: ["Sezgi (Insight)", "Din (Religion)"] },
-  "Köylü": { skills: ["Hayvan Terbiyesi (Animal Handling)", "Doğa (Nature)"] },
-  "Soylusu": { skills: ["Tarih (History)", "İkna (Persuasion)"] },
-  "Suçlu": { skills: ["Yalan (Deception)", "Gizlilik (Stealth)"] },
-  "Şarlatan": { skills: ["Yalan (Deception)", "El Çabukluğu (Sleight of Hand)"] },
-  "Tapınak Muhafızı": { skills: ["Sezgi (Insight)", "Din (Religion)"] },
-  "Tüccar": { skills: ["Sezgi (Insight)", "İkna (Persuasion)"] },
-  "Yabani": { skills: ["Atletizm (Athletics)", "Hayatta Kalma (Survival)"] },
-  "Yetim": { skills: ["El Çabukluğu (Sleight of Hand)", "Gizlilik (Stealth)"] }
-};
 
 const RACES: any = {
   "İnsan": { bonuses: { str: 1, dex: 1, con: 1, int: 1, wis: 1, cha: 1 }, skills: [] },
   "Yarı Elf": { bonuses: { cha: 2, dex: 1, con: 1 }, skills: [] },
   "Dağ Cücesi": { bonuses: { str: 2, con: 2 }, skills: [] },
   "Tepe Cücesi": { bonuses: { con: 2, wis: 1 }, skills: [] },
-  "Ulu Elf": { bonuses: { dex: 2, int: 1 }, skills: ["Algı (Perception)"] },
-  "Orman Elfi": { bonuses: { dex: 2, wis: 1 }, skills: ["Algı (Perception)"] },
-  "Kara Elf (Drow)": { bonuses: { dex: 2, cha: 1 }, skills: ["Algı (Perception)"] },
-  "Hafif Ayak Buçukluk": { bonuses: { dex: 2, cha: 1 }, skills: ["Gizlilik (Stealth)"] },
+  "Ulu Elf": { bonuses: { dex: 2, int: 1 }, skills: ["perception"] },
+  "Orman Elfi": { bonuses: { dex: 2, wis: 1 }, skills: ["perception"] },
+  "Kara Elf (Drow)": { bonuses: { dex: 2, cha: 1 }, skills: ["perception"] },
+  "Hafif Ayak Buçukluk": { bonuses: { dex: 2, cha: 1 }, skills: ["stealth"] },
   "Tıknaz Buçukluk": { bonuses: { dex: 2, con: 1 }, skills: [] },
   "Ejderdoğan": { bonuses: { str: 2, cha: 1 }, skills: [] },
   "Orman Gnomu": { bonuses: { int: 2, dex: 1 }, skills: [] },
   "Kaya Gnomu": { bonuses: { int: 2, con: 1 }, skills: [] },
-  "Yarı Ork": { bonuses: { str: 2, con: 1 }, skills: ["Gözdağı (Intimidation)"] },
+  "Yarı Ork": { bonuses: { str: 2, con: 1 }, skills: ["intimidation"] },
   "Tiefling": { bonuses: { int: 1, cha: 2 }, skills: [] }
 };
 
@@ -104,8 +92,7 @@ const SPELL_SLOT_TABLE = [
   [4,3,3,3,3,2,2,1,1]
 ];
 
-// Büyü Veritabanı - Tipler Eklendi
-// type: 'attack' (Saldırı zarı ve hasar), 'damage' (Sadece hasar/AoE), 'heal' (İyileştirme), 'utility' (Sadece slot harcar)
+// Büyü Veritabanı (Fallback)
 const SPELL_DB = [
   { name: "Büyülü Füze (Magic Missile)", level: 1, type: 'damage', dmg: '3d4+3' },
   { name: "Kalkan (Shield)", level: 1, type: 'utility' },
@@ -114,14 +101,14 @@ const SPELL_DB = [
   { name: "Şifa Sözü (Healing Word)", level: 1, type: 'heal', dmg: '1d4' },
   { name: "Büyü Sezme (Detect Magic)", level: 1, type: 'utility' },
   { name: "Gök Gürültüsü Dalgası (Thunderwave)", level: 1, type: 'damage', dmg: '2d8' },
-  { name: "Uyku (Sleep)", level: 1, type: 'damage', dmg: '5d8' }, // Etki zarı olarak
+  { name: "Uyku (Sleep)", level: 1, type: 'damage', dmg: '5d8' },
   { name: "Yanan Eller (Burning Hands)", level: 1, type: 'damage', dmg: '3d6' },
   { name: "Görünmezlik (Invisibility)", level: 2, type: 'utility' },
   { name: "Puslu Adım (Misty Step)", level: 2, type: 'utility' },
   { name: "Paramparça (Shatter)", level: 2, type: 'damage', dmg: '3d8' },
   { name: "Kişiyi Tutma (Hold Person)", level: 2, type: 'utility' },
   { name: "Düşük Restorasyon (Lesser Restoration)", level: 2, type: 'utility' },
-  { name: "Ruhani Silah (Spiritual Weapon)", level: 2, type: 'attack', dmg: '1d8' }, // Bonus action attack
+  { name: "Ruhani Silah (Spiritual Weapon)", level: 2, type: 'attack', dmg: '1d8' },
   { name: "Ateş Topu (Fireball)", level: 3, type: 'damage', dmg: '8d6' },
   { name: "Büyü Bozma (Counterspell)", level: 3, type: 'utility' },
   { name: "Uçma (Fly)", level: 3, type: 'utility' },
@@ -149,6 +136,12 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
   const [charData, setCharData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // CMS Data
+  const [libraryWeapons, setLibraryWeapons] = useState<WeaponDocument[]>([]);
+  const [libraryArmors, setLibraryArmors] = useState<ArmorDocument[]>([]);
+  const [libraryBackgrounds, setLibraryBackgrounds] = useState<BackgroundDocument[]>([]);
+  const [showWeaponLibrary, setShowWeaponLibrary] = useState(false);
+
   // Level Up UI
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
   const [levelUpPhase, setLevelUpPhase] = useState('select');
@@ -157,6 +150,7 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
 
   // Attack Result Popup
   const [attackResult, setAttackResult] = useState<any>(null);
+  const [attackMode, setAttackMode] = useState<'normal' | 'advantage' | 'disadvantage'>('normal');
 
   // Item & Spell Input
   const [selectedSpellObj, setSelectedSpellObj] = useState<any>(null);
@@ -164,7 +158,21 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
 
   const canEdit = isDM || (user.uid === targetUid);
 
-  const [setupData, setSetupData] = useState({ name: '', race: 'İnsan', class: 'Savaşçı', background: 'Asker' });
+  const [setupData, setSetupData] = useState({ name: '', race: 'İnsan', class: 'Savaşçı', background: '' });
+
+  // Fetch CMS Data
+  useEffect(() => {
+      const fetchData = async () => {
+          const w = await cmsService.getWeapons();
+          const a = await cmsService.getArmors();
+          const b = await cmsService.getBackgrounds();
+          setLibraryWeapons(w);
+          setLibraryArmors(a);
+          setLibraryBackgrounds(b);
+          if (b.length > 0) setSetupData(prev => ({ ...prev, background: b[0].name }));
+      };
+      fetchData();
+  }, []);
 
   useEffect(() => {
     if (!targetUid || !roomCode) return;
@@ -176,16 +184,12 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
         const data = docSnap.data();
         if (!data.classes) data.classes = [];
         if (!data.race) data.race = 'İnsan';
-        if (!data.background) data.background = 'Asker';
+        if (!data.background) data.background = '';
         if (!data.skills) data.skills = [];
         if (!data.weapons) data.weapons = [];
         setCharData(data);
       } else {
-        if(isDM) {
-            setCharData(null);
-        } else {
-            setCharData(null);
-        }
+        setCharData(null);
       }
       setLoading(false);
     });
@@ -195,6 +199,18 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
 
   const handleSetupSubmit = async () => {
       if (!targetUid) return;
+
+      // Find selected background skills
+      let startingSkills: string[] = [];
+      const selectedBg = libraryBackgrounds.find(b => b.name === setupData.background);
+      if (selectedBg && selectedBg.bonuses?.skills) {
+          startingSkills = [...selectedBg.bonuses.skills];
+      }
+
+      // Add Race skills
+      const raceSkills = RACES[setupData.race]?.skills || [];
+      startingSkills = [...new Set([...startingSkills, ...raceSkills])];
+
       const newData = {
           name: setupData.name,
           race: setupData.race,
@@ -202,7 +218,10 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
           classes: [{ name: setupData.class, level: 1, subclass: '' }],
           hp: 12, maxHp: 12, hitDiceCurrent: 1,
           stats: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
-          inventory: [], spells: [], spellSlots: {}, skills: [], weapons: []
+          inventory: [], spells: [], spellSlots: {},
+          skills: startingSkills,
+          weapons: [],
+          armor: null, shield: null
       };
 
       const docRef = doc(db, 'artifacts', appId, 'users', targetUid, 'characters', `room_${roomCode}`);
@@ -260,6 +279,31 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
       return SPELL_SLOT_TABLE[Math.min(casterLvl, 20)] || [];
   };
 
+  const calculateAC = () => {
+      if (!charData) return 10;
+      let ac = 10;
+      let dexMod = getModifier(charData.stats.dex);
+
+      if (charData.armor) {
+          ac = charData.armor.ac;
+          if (charData.armor.dexBonus === 'None') {
+              dexMod = 0;
+          } else if (charData.armor.dexBonus === 'Max 2') {
+              dexMod = Math.min(dexMod, 2);
+          }
+          // Full applies normal dexMod
+      }
+
+      ac += dexMod;
+
+      if (charData.shield) {
+          ac += charData.shield.ac;
+      }
+
+      // Unarmored Defense (Monk/Barbarian) could be added here later
+      return ac;
+  };
+
   // --- Level Up ---
   const startLevelUp = () => {
     setLevelUpPhase('select');
@@ -310,7 +354,13 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
 
   // --- Combat & Attack Logic ---
   const calculateRoll = (bonus: number, diceCount: number, diceSides: number, dmgBonus: number) => {
-      const hitRoll = Math.floor(Math.random() * 20) + 1;
+      let roll1 = Math.floor(Math.random() * 20) + 1;
+      let roll2 = Math.floor(Math.random() * 20) + 1;
+      let hitRoll = roll1;
+
+      if (attackMode === 'advantage') hitRoll = Math.max(roll1, roll2);
+      if (attackMode === 'disadvantage') hitRoll = Math.min(roll1, roll2);
+
       let damageTotal = 0;
       const actualDiceCount = hitRoll === 20 ? diceCount * 2 : diceCount;
 
@@ -327,7 +377,7 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
       const { diceCount, diceSides, bonus } = parseDamage(weapon.dmg);
       const { hitRoll, damageTotal, isCrit } = calculateRoll(weapon.hit, diceCount, diceSides, bonus);
 
-      setAttackResult({ title: weapon.name, hit: hitRoll, hitBonus: weapon.hit, dmg: damageTotal, isCrit });
+      setAttackResult({ title: weapon.name, hit: hitRoll, hitBonus: weapon.hit, dmg: damageTotal, isCrit, mode: attackMode });
 
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', `room_${roomCode}_rolls`), {
         playerName: charData.name,
@@ -339,6 +389,7 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
         damage: damageTotal,
         damageType: weapon.type,
         isCrit: isCrit,
+        mode: attackMode,
         timestamp: serverTimestamp()
       });
   };
@@ -378,6 +429,7 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
                   logData.hitBonus = spellAttackBonus;
                   logData.damage = damageTotal;
                   logData.isCrit = isCrit;
+                  logData.mode = attackMode;
 
                   setAttackResult({ title: spell.name, hit: hitRoll, hitBonus: spellAttackBonus, dmg: damageTotal, isCrit });
               } else {
@@ -394,6 +446,44 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
 
           await addDoc(collection(db, 'artifacts', appId, 'public', 'data', `room_${roomCode}_rolls`), logData);
       }
+  };
+
+  const addWeaponFromLibrary = (weapon: WeaponDocument) => {
+      // Auto-Calculate Hit Bonus roughly
+      // If Finesse -> Max(Str, Dex), Range -> Dex, else Str
+      const props = weapon.properties || [];
+      const isFinesse = props.includes('Finesse');
+      const isRanged = props.includes('Ranged') || weapon.category?.includes('Ranged');
+
+      const strMod = getModifier(charData.stats.str);
+      const dexMod = getModifier(charData.stats.dex);
+
+      let abilityMod = strMod;
+      if (isRanged) abilityMod = dexMod;
+      else if (isFinesse) abilityMod = Math.max(strMod, dexMod);
+
+      // Proficiency? Assume yes for now or 2
+      const prof = 2; // Fixed for Level 1, should calculate based on level
+      const hitBonus = abilityMod + prof;
+
+      // Damage Bonus? Matches Ability Mod
+      const dmgBonus = abilityMod;
+
+      // Parse existing damage string from CMS (e.g., "1d8") and add bonus
+      // We need to reconstruct the damage string "1d8+3"
+      const baseDmg = weapon.damage || "1d4";
+      const dmgString = `${baseDmg}${dmgBonus >= 0 ? '+' + dmgBonus : dmgBonus}`;
+
+      const newWep = {
+          id: Date.now(),
+          name: weapon.name,
+          hit: hitBonus,
+          dmg: dmgString,
+          type: weapon.damageType
+      };
+
+      updateChar({...charData, weapons: [...(charData.weapons||[]), newWep]});
+      setShowWeaponLibrary(false);
   };
 
   if (loading) return <div className="p-8 text-center text-slate-400">{t('common.loading')}</div>;
@@ -425,13 +515,16 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
                           {Object.keys(CLASSES).map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                   </div>
-                  <select
-                    value={setupData.background}
-                    onChange={e => setSetupData({...setupData, background: e.target.value})}
-                    className="w-full p-2 bg-slate-900 rounded border border-slate-600 text-white"
-                  >
-                      {Object.keys(BACKGROUNDS_DATA).map(b => <option key={b} value={b}>{b}</option>)}
-                  </select>
+                  <div>
+                    <label className="text-xs text-gray-400">Background (CMS)</label>
+                    <select
+                        value={setupData.background}
+                        onChange={e => setSetupData({...setupData, background: e.target.value})}
+                        className="w-full p-2 bg-slate-900 rounded border border-slate-600 text-white"
+                    >
+                        {libraryBackgrounds.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
+                    </select>
+                  </div>
                   <button onClick={handleSetupSubmit} className="w-full bg-amber-600 text-white font-bold py-3 rounded">{t('character.start_adventure')}</button>
               </div>
           </div>
@@ -439,6 +532,8 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
   }
 
   if (!charData) return <div className="p-8 text-center text-slate-400">{t('character.no_data')}</div>;
+
+  const currentAC = calculateAC();
 
   return (
     <div className="p-4 space-y-6 pb-24 overflow-y-auto h-full relative">
@@ -448,6 +543,9 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-in zoom-in duration-200" onClick={() => setAttackResult(null)}>
               <div className="bg-slate-800 p-8 rounded-2xl border-2 border-red-600 shadow-[0_0_50px_rgba(220,38,38,0.5)] text-center" onClick={(e: any) => e.stopPropagation()}>
                   <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-wider">{attackResult.title}</h3>
+                  {attackResult.mode !== 'normal' && (
+                      <div className="text-amber-500 font-bold uppercase text-xs mb-2 tracking-widest">{attackResult.mode}</div>
+                  )}
 
                   {attackResult.hit !== undefined && (
                       <div className="mb-4 p-4 bg-slate-900 rounded-xl border border-slate-700">
@@ -470,6 +568,30 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
                   </div>
 
                   <button onClick={() => setAttackResult(null)} className="mt-6 w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg font-bold">{t('common.close')}</button>
+              </div>
+          </div>
+      )}
+
+      {/* WEAPON LIBRARY MODAL */}
+      {showWeaponLibrary && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowWeaponLibrary(false)}>
+              <div className="bg-slate-800 p-6 rounded-xl w-full max-w-2xl h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                  <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><Book size={20}/> Silah Kütüphanesi</h3>
+                  <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                      {libraryWeapons.map(w => (
+                          <div key={w.id} className="bg-slate-700 p-3 rounded flex justify-between items-center hover:bg-slate-600">
+                              <div>
+                                  <div className="font-bold">{w.name}</div>
+                                  <div className="text-xs text-slate-400">{w.category} | {w.damage} {w.damageType}</div>
+                              </div>
+                              <button
+                                onClick={() => addWeaponFromLibrary(w)}
+                                className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-500"
+                              >Ekle</button>
+                          </div>
+                      ))}
+                  </div>
+                  <button onClick={() => setShowWeaponLibrary(false)} className="mt-4 bg-slate-900 text-white py-2 rounded">Kapat</button>
               </div>
           </div>
       )}
@@ -546,21 +668,116 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
           </div>
       )}
 
+      {/* HEADER (Name & Level Up) */}
+      <div className="flex justify-between items-start bg-slate-800 p-4 rounded-xl border border-slate-700">
+            <div>
+                <input
+                    value={charData.name}
+                    onChange={(e) => updateChar({...charData, name: e.target.value})}
+                    className="bg-transparent text-2xl font-bold text-white w-full border-b border-slate-600 focus:border-amber-500 outline-none mb-1"
+                    placeholder={t('character.name')}
+                    disabled={!canEdit}
+                />
+                <div className="text-xs text-slate-400 flex gap-2">
+                    <span className="bg-slate-700 px-1 rounded">{charData.race}</span>
+                    <span className="bg-slate-700 px-1 rounded">{charData.classes[0]?.name} {charData.classes[0]?.level}</span>
+                    <span className="bg-slate-700 px-1 rounded">{charData.background}</span>
+                </div>
+            </div>
+            {charData.classes.length > 0 && canEdit && (
+                <button onClick={startLevelUp} className="bg-amber-600/80 text-white p-2 rounded-full animate-pulse hover:bg-amber-600">
+                    <ChevronUp className="w-4 h-4" />
+                </button>
+            )}
+      </div>
+
+      {/* Stats, AC, HP Row */}
+      <div className="grid grid-cols-4 gap-2">
+          {/* AC Display */}
+          <div className="col-span-1 bg-slate-800 p-2 rounded-lg border border-slate-600 flex flex-col items-center justify-center relative">
+               <Shield size={16} className="text-slate-400 mb-1"/>
+               <div className="text-2xl font-bold text-white">{currentAC}</div>
+               <div className="text-[10px] text-slate-400 font-bold">AC</div>
+          </div>
+
+          {/* Stats */}
+          {STAT_ORDER.slice(0, 3).map((stat) => (
+            <div key={stat} className="bg-slate-800 p-2 rounded-lg border border-slate-700 text-center">
+                <div className="text-slate-500 text-[10px] font-bold mb-1">{t(`stats.${stat}`)}</div>
+                <div className="text-lg font-bold text-white">{charData.stats[stat]}</div>
+                <div className="text-amber-500 text-xs font-bold">{formatModifier(getModifier(charData.stats[stat] || 10))}</div>
+            </div>
+          ))}
+          {STAT_ORDER.slice(3, 6).map((stat) => (
+            <div key={stat} className="bg-slate-800 p-2 rounded-lg border border-slate-700 text-center">
+                <div className="text-slate-500 text-[10px] font-bold mb-1">{t(`stats.${stat}`)}</div>
+                <div className="text-lg font-bold text-white">{charData.stats[stat]}</div>
+                <div className="text-amber-500 text-xs font-bold">{formatModifier(getModifier(charData.stats[stat] || 10))}</div>
+            </div>
+          ))}
+           <div className="bg-slate-800 p-2 rounded-lg border border-slate-700 text-center flex flex-col justify-center">
+               <div className="text-xs text-slate-400">HP</div>
+               <div className="text-green-400 font-bold">{charData.hp}/{charData.maxHp}</div>
+           </div>
+      </div>
+
+      {/* ARMOR & SHIELD SELECTION */}
+      {canEdit && (
+          <div className="bg-slate-800 p-3 rounded-xl border border-slate-700">
+               <h4 className="text-xs font-bold text-slate-400 mb-2 uppercase flex items-center gap-2"><Shield size={12}/> Zırh & Kalkan</h4>
+               <div className="grid grid-cols-2 gap-2">
+                   <select
+                        className="bg-slate-900 text-white text-xs p-2 rounded border border-slate-600"
+                        value={charData.armor ? JSON.stringify(charData.armor) : ""}
+                        onChange={(e) => {
+                            const val = e.target.value ? JSON.parse(e.target.value) : null;
+                            updateChar({...charData, armor: val});
+                        }}
+                    >
+                       <option value="">Zırh Yok (10 + Dex)</option>
+                       {libraryArmors.filter(a => a.type !== 'Shield').map(a => (
+                           <option key={a.id} value={JSON.stringify(a)}>{a.name} (AC {a.ac})</option>
+                       ))}
+                   </select>
+
+                   <select
+                        className="bg-slate-900 text-white text-xs p-2 rounded border border-slate-600"
+                        value={charData.shield ? JSON.stringify(charData.shield) : ""}
+                        onChange={(e) => {
+                            const val = e.target.value ? JSON.parse(e.target.value) : null;
+                            updateChar({...charData, shield: val});
+                        }}
+                    >
+                       <option value="">Kalkan Yok</option>
+                       {libraryArmors.filter(a => a.type === 'Shield').map(a => (
+                           <option key={a.id} value={JSON.stringify(a)}>{a.name} (+{a.ac})</option>
+                       ))}
+                   </select>
+               </div>
+          </div>
+      )}
+
+
       {/* SAVAŞ PANELİ */}
       <div className="bg-slate-800 p-4 rounded-xl border border-red-900/50">
-          <h3 className="text-white font-bold mb-2 flex items-center"><Sword className="w-4 h-4 mr-2 text-red-500"/> {t('character.combat_action')}</h3>
+          <div className="flex justify-between items-center mb-2">
+             <h3 className="text-white font-bold flex items-center"><Sword className="w-4 h-4 mr-2 text-red-500"/> {t('character.combat_action')}</h3>
+
+             {/* Advantage Toggles */}
+             <div className="flex bg-slate-900 rounded p-1">
+                 <button onClick={()=>setAttackMode('normal')} className={`p-1 rounded text-xs ${attackMode==='normal'?'bg-slate-600 text-white':'text-slate-500'}`}>Normal</button>
+                 <button onClick={()=>setAttackMode('advantage')} className={`p-1 rounded text-xs ${attackMode==='advantage'?'bg-green-700 text-white':'text-slate-500'}`}>Adv</button>
+                 <button onClick={()=>setAttackMode('disadvantage')} className={`p-1 rounded text-xs ${attackMode==='disadvantage'?'bg-red-700 text-white':'text-slate-500'}`}>Dis</button>
+             </div>
+          </div>
 
           {canEdit && (
-             <div className="flex gap-1 mb-4 text-xs">
-                 <input placeholder={t('character.weapon_name')} className="bg-slate-900 text-white p-1 rounded flex-1" value={newWeapon.name} onChange={e=>setNewWeapon({...newWeapon, name:e.target.value})} />
-                 <input placeholder="+Hit" type="number" className="bg-slate-900 text-white p-1 rounded w-12" value={newWeapon.hit} onChange={e=>setNewWeapon({...newWeapon, hit:parseInt(e.target.value)})} />
-                 <input placeholder="1d8+3" className="bg-slate-900 text-white p-1 rounded w-16" value={newWeapon.dmg} onChange={e=>setNewWeapon({...newWeapon, dmg:e.target.value})} />
-                 <button onClick={() => {
-                     if(newWeapon.name) {
-                         updateChar({...charData, weapons: [...(charData.weapons||[]), {id:Date.now(), ...newWeapon}]});
-                         setNewWeapon({name:'', hit:0, dmg:'1d6', type:'slashing'});
-                     }
-                 }} className="bg-green-600 text-white px-2 rounded"><Plus className="w-3 h-3"/></button>
+             <div className="flex gap-2 mb-4 text-xs">
+                 <button onClick={() => setShowWeaponLibrary(true)} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded flex items-center justify-center gap-2">
+                     <Book size={14}/> Kütüphaneden Ekle
+                 </button>
+
+                 {/* Manual Add Toggle could be here, kept simple for now */}
              </div>
           )}
 
@@ -577,7 +794,7 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
                             onClick={() => performAttack(w)}
                             className="bg-red-900/80 hover:bg-red-700 text-white text-xs px-3 py-1 rounded flex items-center mr-2"
                         >
-                            <Target className="w-3 h-3 mr-1"/> {t('character.attack')}
+                            <Dices className="w-3 h-3 mr-1"/> {t('character.attack')}
                         </button>
                         {canEdit && (
                             <button onClick={()=>updateChar({...charData, weapons: charData.weapons.filter((i: any)=>i.id!==w.id)})} className="text-slate-600 hover:text-red-400"><Trash2 className="w-3 h-3"/></button>
@@ -611,45 +828,28 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
           </div>
       </div>
 
-      {/* HEADER (Name & Level Up) */}
-      <div className="flex justify-between items-start bg-slate-800 p-4 rounded-xl border border-slate-700">
-            <input
-              value={charData.name}
-              onChange={(e) => updateChar({...charData, name: e.target.value})}
-              className="bg-transparent text-2xl font-bold text-white w-2/3 border-b border-slate-600 focus:border-amber-500 outline-none"
-              placeholder={t('character.name')}
-              disabled={!canEdit}
-            />
-            {charData.classes.length > 0 && canEdit && (
-                <button onClick={startLevelUp} className="bg-amber-600/80 text-white p-2 rounded-full animate-pulse hover:bg-amber-600">
-                    <ChevronUp className="w-4 h-4" />
-                </button>
-            )}
-      </div>
+      {/* Skills Display (Auto-populated from Background) */}
+      <div className="bg-slate-800 p-3 rounded-xl border border-slate-700">
+           <div className="text-xs font-bold text-slate-400 mb-2 uppercase">Yetenekler (Skills)</div>
+           <div className="grid grid-cols-2 gap-1">
+               {SKILLS_LIST.map(skill => {
+                   const isProficient = (charData.skills || []).includes(skill.key || skill.name); // Support legacy name check or key check
+                   // Legacy check support: SKILLS_LIST names were "Atletizm (Athletics)"
+                   // New CMS uses keys "athletics".
+                   // Let's assume we migrated to keys. But the list above has 'key'.
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-2">
-        {STAT_ORDER.map((stat) => (
-          <div key={stat} className="bg-slate-800 p-2 rounded-lg border border-slate-700 text-center">
-            <div className="text-slate-500 text-[10px] font-bold mb-1">{t(`stats.${stat}`)}</div>
-            {canEdit ? (
-                <input
-                type="number"
-                value={charData.stats[stat] || 10}
-                onChange={(e) => {
-                    const newStats = { ...charData.stats, [stat]: parseInt(e.target.value) || 10 };
-                    updateChar({ ...charData, stats: newStats });
-                }}
-                className="bg-transparent text-white text-xl font-bold w-full text-center outline-none"
-                />
-            ) : (
-                <div className="text-white text-xl font-bold">{charData.stats[stat]}</div>
-            )}
-            <div className="text-amber-500 text-sm font-bold mt-1 bg-slate-900 rounded py-0.5">
-              {formatModifier(getModifier(charData.stats[stat] || 10))}
-            </div>
-          </div>
-        ))}
+                   // Calculate Bonus
+                   let bonus = getModifier(charData.stats[skill.stat]);
+                   if (isProficient) bonus += 2; // Fixed prof bonus for now
+
+                   return (
+                       <div key={skill.key} className={`text-xs flex justify-between px-2 py-1 rounded ${isProficient ? 'bg-indigo-900/30 text-indigo-200 border border-indigo-500/30' : 'text-slate-500'}`}>
+                           <span>{skill.name.split(' (')[0]}</span>
+                           <span className={isProficient ? "font-bold" : ""}>{formatModifier(bonus)}</span>
+                       </div>
+                   )
+               })}
+           </div>
       </div>
 
       {/* İşlevsel Büyüler (Savaş dışı veya buff) */}
