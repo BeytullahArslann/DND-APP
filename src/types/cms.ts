@@ -37,3 +37,15 @@ export interface WeaponDocument extends CMSDocument {
   cost?: string;
   range?: string; // "20/60"
 }
+
+export interface BackgroundDocument extends CMSDocument {
+  name: string;
+  description: string; // HTML or text
+  skillProficiencies: string;
+  toolProficiencies: string;
+  languages: string;
+  equipment: string; // HTML or text
+  featureName: string;
+  featureDescription: string; // HTML or text
+  suggestedCharacteristics: string; // HTML (tables)
+}

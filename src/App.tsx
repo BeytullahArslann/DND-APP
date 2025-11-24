@@ -11,6 +11,7 @@ import { ErrorPage } from './pages/ErrorPage';
 import AdminLayout from './layouts/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import RulesEditor from './pages/admin/RulesEditor';
+import BackgroundsEditor from './pages/admin/BackgroundsEditor';
 import SpellsEditor from './pages/admin/SpellsEditor';
 import WeaponsEditor from './pages/admin/WeaponsEditor';
 import UsersPage from './pages/admin/UsersPage';
@@ -54,6 +55,7 @@ const router = createBrowserRouter([
     children: [
       { path: '', element: <AdminDashboard /> },
       { path: 'rules', element: <RulesEditor /> },
+      { path: 'backgrounds', element: <BackgroundsEditor /> },
       { path: 'spells', element: <SpellsEditor /> },
       { path: 'weapons', element: <WeaponsEditor /> },
       { path: 'users', element: <UsersPage /> },
