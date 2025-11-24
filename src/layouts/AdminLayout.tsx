@@ -41,6 +41,7 @@ const AdminLayout: React.FC = () => {
   const navItems = [
     { path: '/admin', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
     { path: '/admin/rules', icon: <Book size={20} />, label: 'Kurallar' },
+    { path: '/admin/backgrounds', icon: <Book size={20} />, label: 'Geçmişler' },
     { path: '/admin/spells', icon: <Sparkles size={20} />, label: 'Büyüler' },
     { path: '/admin/weapons', icon: <Sword size={20} />, label: 'Silahlar' },
     { path: '/admin/users', icon: <Users size={20} />, label: 'Kullanıcılar' },
