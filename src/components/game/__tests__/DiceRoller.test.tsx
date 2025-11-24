@@ -30,7 +30,7 @@ vi.mock('firebase/storage', () => ({
 }));
 
 // Mock the local firebase lib which re-exports/initializes these
-vi.mock('../../lib/firebase', () => ({
+vi.mock('../../../lib/firebase', () => ({
   db: {},
   auth: {},
   storage: {},
