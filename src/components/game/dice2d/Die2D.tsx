@@ -56,9 +56,17 @@ export const Die2D: React.FC<Die2DProps> = ({ sides, finalResult, rolling, delay
           <path d="M50 10 L88 38 L73 85 H27 L12 38 Z" fill="#EFEBE9" stroke="#5D4037" strokeWidth="3" />
         );
       case 20: // Hexagon
-      default:
         return (
           <path d="M50 10 L85 27 V68 L50 85 L15 68 V27 Z" fill="#EFEBE9" stroke="#5D4037" strokeWidth="3" />
+        );
+      case 100: // Circle
+        return (
+          <circle cx="50" cy="50" r="40" fill="#EFEBE9" stroke="#5D4037" strokeWidth="3" />
+        );
+      default:
+        // Default to Circle if unknown
+        return (
+          <circle cx="50" cy="50" r="40" fill="#EFEBE9" stroke="#5D4037" strokeWidth="3" />
         );
     }
   };

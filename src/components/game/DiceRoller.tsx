@@ -278,14 +278,14 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
 
                    {/* Dice Buttons */}
                    <div className="flex gap-2 p-2 bg-[#A1887F] rounded-xl shadow-inner border border-[#5D4037]">
-                       {[4, 6, 8, 10, 12, 20].map(sides => (
+                       {[4, 6, 8, 10, 12, 20, 100].map(sides => (
                            <button
                                key={sides}
                                onClick={() => addToSelection(sides)}
                                className="w-12 h-12 flex flex-col items-center justify-center rounded bg-[#EFEBE9] text-[#4E342E] font-black border-b-4 border-[#8D6E63] active:border-b-0 active:translate-y-1 transition-all hover:bg-white shadow-sm"
                            >
                                <span className="text-xs text-[#8D6E63] font-medium">d</span>
-                               <span className="text-lg leading-none">{sides}</span>
+                               <span className={`${sides === 100 ? 'text-base' : 'text-lg'} leading-none`}>{sides}</span>
                            </button>
                        ))}
                    </div>
