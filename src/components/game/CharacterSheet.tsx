@@ -728,29 +728,31 @@ export const CharacterSheet = ({ user, roomCode, targetUid, isDM }: CharacterShe
                <div className="grid grid-cols-2 gap-2">
                    <select
                         className="bg-slate-900 text-white text-xs p-2 rounded border border-slate-600"
-                        value={charData.armor ? JSON.stringify(charData.armor) : ""}
+                        value={charData.armor?.id || ""}
                         onChange={(e) => {
-                            const val = e.target.value ? JSON.parse(e.target.value) : null;
-                            updateChar({...charData, armor: val});
+                            const id = e.target.value;
+                            const item = libraryArmors.find(a => a.id === id) || null;
+                            updateChar({...charData, armor: item});
                         }}
                     >
                        <option value="">Zırh Yok (10 + Dex)</option>
                        {libraryArmors.filter(a => a.type !== 'Shield').map(a => (
-                           <option key={a.id} value={JSON.stringify(a)}>{a.name} (AC {a.ac})</option>
+                           <option key={a.id} value={a.id}>{a.name} (AC {a.ac})</option>
                        ))}
                    </select>
 
                    <select
                         className="bg-slate-900 text-white text-xs p-2 rounded border border-slate-600"
-                        value={charData.shield ? JSON.stringify(charData.shield) : ""}
+                        value={charData.shield?.id || ""}
                         onChange={(e) => {
-                            const val = e.target.value ? JSON.parse(e.target.value) : null;
-                            updateChar({...charData, shield: val});
+                            const id = e.target.value;
+                            const item = libraryArmors.find(a => a.id === id) || null;
+                            updateChar({...charData, shield: item});
                         }}
                     >
                        <option value="">Kalkan Yok</option>
                        {libraryArmors.filter(a => a.type === 'Shield').map(a => (
-                           <option key={a.id} value={JSON.stringify(a)}>{a.name} (+{a.ac})</option>
+                           <option key={a.id} value={a.id}>{a.name} (+{a.ac})</option>
                        ))}
                    </select>
                </div>
