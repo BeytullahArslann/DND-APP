@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useRef } from 'react';
-import { useBox, useConvexPolyhedron } from '@react-three/cannon';
-import { Text3D, Center, RoundedBox } from '@react-three/drei';
+import { useConvexPolyhedron } from '@react-three/cannon';
+import { Text3D, Center } from '@react-three/drei';
 import * as THREE from 'three';
 import { mergeVertices } from 'three-stdlib';
 import helvetikerRegular from 'three/examples/fonts/helvetiker_regular.typeface.json';
@@ -26,7 +26,7 @@ const createGeometry = (sides: number) => {
       case 4: geo = new THREE.TetrahedronGeometry(1.4); break;
       case 6: geo = new THREE.BoxGeometry(1.4, 1.4, 1.4); break;
       case 8: geo = new THREE.OctahedronGeometry(1.2); break;
-      case 10: geo = new THREE.OctahedronGeometry(1.4); break; // D10 approximation
+      case 10: geo = new THREE.IcosahedronGeometry(1.4); break; // D10 using D20 geometry (doubled numbers)
       case 12: geo = new THREE.DodecahedronGeometry(1.2); break;
       case 20: geo = new THREE.IcosahedronGeometry(1.3); break;
       default: geo = new THREE.BoxGeometry(1.4, 1.4, 1.4);
@@ -37,7 +37,6 @@ const createGeometry = (sides: number) => {
 // Helper to get vertices and faces for convex polyhedron
 const toConvexProps = (bufferGeometry: THREE.BufferGeometry) => {
     // Merge vertices to ensure we have a clean topology (shared vertices)
-    // This is critical for Cannon.js ConvexPolyhedron to work correctly without crashing on "triangle soup"
     const geo = mergeVertices(bufferGeometry);
 
     let vertices: number[][] = [];
@@ -48,14 +47,12 @@ const toConvexProps = (bufferGeometry: THREE.BufferGeometry) => {
         vertices.push([pos.getX(i), pos.getY(i), pos.getZ(i)]);
     }
 
-    // After merging, we should have an index
     if (geo.index) {
        const index = geo.index;
        for (let i = 0; i < index.count; i+=3) {
            faces.push([index.getX(i), index.getY(i), index.getZ(i)]);
        }
     } else {
-        // Fallback if mergeVertices didn't index it (unlikely for primitives but safe to handle)
         for (let i = 0; i < pos.count; i+=3) {
             faces.push([i, i+1, i+2]);
         }
@@ -66,19 +63,7 @@ const toConvexProps = (bufferGeometry: THREE.BufferGeometry) => {
 
 const FaceNumbers = ({ geometry, sides }: { geometry: THREE.BufferGeometry, sides: number }) => {
     const data = useMemo(() => {
-        if (sides === 6) {
-            const dist = 0.71; // Slightly embedded or on surface
-            return [
-                { pos: [dist, 0, 0], rot: [0, Math.PI/2, 0], num: 1 },
-                { pos: [-dist, 0, 0], rot: [0, -Math.PI/2, 0], num: 6 },
-                { pos: [0, dist, 0], rot: [-Math.PI/2, 0, 0], num: 2 },
-                { pos: [0, -dist, 0], rot: [Math.PI/2, 0, 0], num: 5 },
-                { pos: [0, 0, dist], rot: [0, 0, 0], num: 3 },
-                { pos: [0, 0, -dist], rot: [0, Math.PI, 0], num: 4 },
-            ];
-        }
-
-        // Generic Face Finding for non-cubes
+        // Generic Face Finding
         const nonIndexed = geometry.index ? geometry.toNonIndexed() : geometry;
         const pos = nonIndexed.attributes.position.array;
         const norm = nonIndexed.attributes.normal.array;
@@ -98,8 +83,12 @@ const FaceNumbers = ({ geometry, sides }: { geometry: THREE.BufferGeometry, side
 
         return foundFaces.map((f, i) => {
             const quaternion = new THREE.Quaternion();
-            // Rotate text to face outward
+            // Rotate text to face outward.
+            // We want the text's local Z to point along the normal.
+            // Text3D lies on XY plane, facing +Z.
             quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), f.norm.normalize());
+
+            // Adjust rotation for specific shapes if needed, but generic mostly works.
             const euler = new THREE.Euler().setFromQuaternion(quaternion);
             return {
                 pos: f.pos.multiplyScalar(1.02).toArray(), // Slightly offset
@@ -139,17 +128,6 @@ const Die = ({ id, sides, position, onSettled }: DieProps) => {
 
   // Calculate face mapping (Normal -> Number)
   const faceMap = useMemo(() => {
-       if (sides === 6) {
-           return [
-               { norm: new THREE.Vector3(1,0,0), num: 1 },
-               { norm: new THREE.Vector3(-1,0,0), num: 6 },
-               { norm: new THREE.Vector3(0,1,0), num: 2 },
-               { norm: new THREE.Vector3(0,-1,0), num: 5 },
-               { norm: new THREE.Vector3(0,0,1), num: 3 },
-               { norm: new THREE.Vector3(0,0,-1), num: 4 },
-           ];
-       }
-
        const nonIndexed = geometry.index ? geometry.toNonIndexed() : geometry;
        const pos = nonIndexed.attributes.position.array;
        const norm = nonIndexed.attributes.normal.array;
@@ -174,19 +152,10 @@ const Die = ({ id, sides, position, onSettled }: DieProps) => {
   }, [geometry, sides]);
 
 
-  // Physics
+  // Physics - Unified for all dice to ensure consistent behavior
+  // We use ConvexPolyhedron for everything, including Cubes (d6),
+  // as it works reliably with the "up" detection logic.
   const [ref, api] = (() => {
-     if (sides === 6) {
-         return useBox(() => ({
-             mass: 1,
-             position,
-             args: [1.4, 1.4, 1.4],
-             friction: 0.3,
-             restitution: 0.5
-         }));
-     }
-
-     // Use ConvexPolyhedron for others
      const [vertices, faces] = useMemo(() => toConvexProps(geometry), [geometry]);
      return useConvexPolyhedron(() => ({
          mass: 1,
@@ -203,6 +172,7 @@ const Die = ({ id, sides, position, onSettled }: DieProps) => {
   const quaternion = useRef([0, 0, 0, 1]);
   const isSettled = useRef(false);
   const stableFrames = useRef(0);
+  const startTime = useRef(Date.now());
 
   useEffect(() => api.velocity.subscribe((v) => (velocity.current = v)), [api.velocity]);
   useEffect(() => api.angularVelocity.subscribe((v) => (angularVelocity.current = v)), [api.angularVelocity]);
@@ -211,11 +181,12 @@ const Die = ({ id, sides, position, onSettled }: DieProps) => {
   // Initial spin
   useEffect(() => {
       if (api) {
-          const kick = 10;
+          const kick = 12; // Slightly stronger kick
           api.velocity.set((Math.random()-0.5)*kick, (Math.random())*5, (Math.random()-0.5)*kick);
           api.angularVelocity.set((Math.random()-0.5)*20, (Math.random()-0.5)*20, (Math.random()-0.5)*20);
           isSettled.current = false;
           stableFrames.current = 0;
+          startTime.current = Date.now();
       }
   }, [api]);
 
@@ -229,14 +200,24 @@ const Die = ({ id, sides, position, onSettled }: DieProps) => {
           const vMag = Math.sqrt(v[0]**2 + v[1]**2 + v[2]**2);
           const avMag = Math.sqrt(av[0]**2 + av[1]**2 + av[2]**2);
 
-          if (vMag < 0.1 && avMag < 0.1) {
+          // Thresholds
+          const VELOCITY_THRESHOLD = 0.2; // Relaxed from 0.1
+          const MAX_TIME_MS = 5000; // 5 seconds failsafe
+
+          const timeElapsed = Date.now() - startTime.current;
+          const isTimedOut = timeElapsed > MAX_TIME_MS;
+
+          if ((vMag < VELOCITY_THRESHOLD && avMag < VELOCITY_THRESHOLD) || isTimedOut) {
               stableFrames.current++;
           } else {
               stableFrames.current = 0;
           }
 
-          if (stableFrames.current > 10) {
+          // If stable for enough frames OR timed out significantly
+          if (stableFrames.current > 10 || (isTimedOut && stableFrames.current > 2)) {
               isSettled.current = true;
+              // If timed out, we might need to stop it manually to look nice,
+              // but calculating result is the priority.
               calculateResult();
           }
       }, 100);
@@ -281,15 +262,10 @@ const Die = ({ id, sides, position, onSettled }: DieProps) => {
 
   return (
     <group ref={ref as any}>
-      {sides === 6 ? (
-          <RoundedBox args={[1.4, 1.4, 1.4]} radius={0.15} smoothness={4} castShadow receiveShadow>
-               <meshStandardMaterial {...woodMaterialProps} />
-          </RoundedBox>
-      ) : (
-          <mesh castShadow receiveShadow geometry={geometry}>
-               <meshStandardMaterial {...woodMaterialProps} />
-          </mesh>
-      )}
+      {/* Unified Visuals */}
+      <mesh castShadow receiveShadow geometry={geometry}>
+           <meshStandardMaterial {...woodMaterialProps} />
+      </mesh>
       <FaceNumbers geometry={geometry} sides={sides} />
     </group>
   );
