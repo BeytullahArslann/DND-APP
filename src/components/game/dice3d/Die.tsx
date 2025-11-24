@@ -2,7 +2,9 @@ import React, { useMemo, useEffect, useState, useRef } from 'react';
 import { useBox, useConvexPolyhedron } from '@react-three/cannon';
 import { Text, RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
-import robotoFont from '../../../assets/fonts/Roboto-Bold.ttf';
+
+// Use a remote URL for the font to avoid local asset build/parsing issues (DataView errors)
+const robotoFont = 'https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlfBBc4.woff';
 
 interface DieProps {
   id: string;
