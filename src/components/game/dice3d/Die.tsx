@@ -1,10 +1,8 @@
-import React, { useMemo, useEffect, useState, useRef } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import { useBox, useConvexPolyhedron } from '@react-three/cannon';
-import { Text, RoundedBox } from '@react-three/drei';
+import { Text3D, Center, RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
-
-// Use a remote URL for the font to avoid local asset build/parsing issues (DataView errors)
-const robotoFont = 'https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlfBBc4.woff';
+import helvetikerRegular from 'three/examples/fonts/helvetiker_regular.typeface.json';
 
 interface DieProps {
   id: string;
@@ -69,7 +67,7 @@ const toConvexProps = (bufferGeometry: THREE.BufferGeometry) => {
 const FaceNumbers = ({ geometry, sides }: { geometry: THREE.BufferGeometry, sides: number }) => {
     const data = useMemo(() => {
         if (sides === 6) {
-            const dist = 0.71;
+            const dist = 0.71; // Slightly embedded or on surface
             return [
                 { pos: [dist, 0, 0], rot: [0, Math.PI/2, 0], num: 1 },
                 { pos: [-dist, 0, 0], rot: [0, -Math.PI/2, 0], num: 6 },
@@ -81,7 +79,6 @@ const FaceNumbers = ({ geometry, sides }: { geometry: THREE.BufferGeometry, side
         }
 
         // Generic Face Finding for non-cubes
-        // Safely check if indexed before converting
         const nonIndexed = geometry.index ? geometry.toNonIndexed() : geometry;
         const pos = nonIndexed.attributes.position.array;
         const norm = nonIndexed.attributes.normal.array;
@@ -105,7 +102,7 @@ const FaceNumbers = ({ geometry, sides }: { geometry: THREE.BufferGeometry, side
             quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), f.norm.normalize());
             const euler = new THREE.Euler().setFromQuaternion(quaternion);
             return {
-                pos: f.pos.multiplyScalar(1.02).toArray(),
+                pos: f.pos.multiplyScalar(1.02).toArray(), // Slightly offset
                 rot: [euler.x, euler.y, euler.z],
                 num: (i % sides) + 1
             };
@@ -115,19 +112,23 @@ const FaceNumbers = ({ geometry, sides }: { geometry: THREE.BufferGeometry, side
     return (
         <>
             {data.map((d, i) => (
-                <Text
+                <group
                     key={i}
                     position={d.pos as [number, number, number]}
                     rotation={d.rot as [number, number, number]}
-                    fontSize={0.25}
-                    color="#3E2723" // Dark brown burnt look
-                    anchorX="center"
-                    anchorY="middle"
-                    fillOpacity={0.9}
-                    font={robotoFont}
                 >
-                    {d.num}
-                </Text>
+                    <Center>
+                        <Text3D
+                            font={helvetikerRegular as any}
+                            size={0.25}
+                            height={0.02}
+                            curveSegments={12}
+                        >
+                            {d.num}
+                            <meshStandardMaterial color="#3E2723" />
+                        </Text3D>
+                    </Center>
+                </group>
             ))}
         </>
     );
