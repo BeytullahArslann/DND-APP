@@ -4,7 +4,7 @@ import { Trash2, Sword, Sparkles } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { db, appId } from '../../lib/firebase';
 import { RollLog } from '../../types';
-import { DiceCanvas } from './dice3d/DiceCanvas';
+import { Die2D } from './dice2d/Die2D';
 
 interface DiceRollerProps {
     user: FirebaseUser | null;
@@ -15,12 +15,11 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
   // State
   const [history, setHistory] = useState<RollLog[]>([]);
   const [selection, setSelection] = useState<Record<number, number>>({});
-  const [activeDice, setActiveDice] = useState<{type: number, id: string}[]>([]);
+
+  // Refactored state: simpler structure for active dice
+  const [activeDice, setActiveDice] = useState<{sides: number, id: string, result: number}[]>([]);
   const [isRolling, setIsRolling] = useState(false);
   const [resultState, setResultState] = useState<{ total: number, details: string } | null>(null);
-
-  // New state for physics-based results
-  const [pendingResults, setPendingResults] = useState<Record<string, number>>({});
 
   const isMounted = useRef(true);
 
@@ -50,7 +49,7 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
   }, [roomCode]);
 
   const addToSelection = (sides: number) => {
-    if (isRolling) return; // Prevent changing selection while rolling
+    if (isRolling) return;
 
     setSelection(prev => ({
         ...prev,
@@ -62,45 +61,20 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
       if (isRolling) return;
       setSelection({});
       setResultState(null);
+      setActiveDice([]);
   };
 
-  // Callback from Die component when it settles
-  const handleDieSettled = (id: string, result: number) => {
-      setPendingResults(prev => {
-          const newState = { ...prev, [id]: result };
-          return newState;
-      });
-  };
-
-  // Monitor pending results to finalize roll
-  useEffect(() => {
-      if (!isRolling || activeDice.length === 0) return;
-
-      const allSettled = activeDice.every(d => pendingResults[d.id] !== undefined);
-
-      if (allSettled) {
-          // All dice have reported!
-          finalizeRoll();
-      }
-  }, [pendingResults, isRolling, activeDice]);
-
-
-  const finalizeRoll = async () => {
+  const finalizeRoll = async (diceResults: {sides: number, result: number}[]) => {
       if (!user || !roomCode) return;
 
-      const results = activeDice.map(d => ({
-          sides: d.type,
-          result: pendingResults[d.id]
-      }));
-
-      const total = results.reduce((a, b) => a + b.result, 0);
-      const detailsStr = results.map(r => `d${r.sides}: ${r.result}`).join(', ');
+      const total = diceResults.reduce((a, b) => a + b.result, 0);
+      const detailsStr = diceResults.map(r => `d${r.sides}: ${r.result}`).join(', ');
 
       setResultState({ total, details: detailsStr });
-      setIsRolling(false);
+      setIsRolling(false); // Stop rolling animation state
 
       // Batch write to Firestore
-      const promises = results.map(r =>
+      const promises = diceResults.map(r =>
             addDoc(collection(db, 'artifacts', appId, 'public', 'data', `room_${roomCode}_rolls`), {
             playerName: user.displayName,
             uid: user.uid,
@@ -111,7 +85,12 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
         })
       );
 
-      setSelection({}); // Clear selection
+      // We do NOT clear selection immediately so user can see what they rolled
+      // But we can clear it if they roll again or manually clear.
+      // The previous code cleared selection, so let's stick to that for now or clear it on next interaction?
+      // Actually, keeping selection allows rerolling same set.
+      // But typically, you clear after a roll.
+      setSelection({});
 
       try {
           await Promise.all(promises);
@@ -125,20 +104,29 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
 
     setIsRolling(true);
     setResultState(null);
-    setPendingResults({});
-    setActiveDice([]); // Reset to respawn
+    setActiveDice([]);
 
-    // Slight delay to allow unmount/remount of dice if needed, or just state update
+    // 1. Determine Results Immediately (Logic First)
+    const newDice: {sides: number, id: string, result: number}[] = [];
+    Object.entries(selection).forEach(([sidesStr, count]) => {
+        const sides = parseInt(sidesStr);
+        for (let i = 0; i < count; i++) {
+            newDice.push({
+                sides,
+                id: Math.random().toString(36).substr(2, 9),
+                result: Math.floor(Math.random() * sides) + 1
+            });
+        }
+    });
+
+    // Set active dice so they appear on screen
+    setActiveDice(newDice);
+
+    // 2. Wait for Animation
+    // We let them "roll" for a fixed duration (e.g. 1.5s)
     setTimeout(() => {
-        const newDice: {type: number, id: string}[] = [];
-        Object.entries(selection).forEach(([sidesStr, count]) => {
-            const sides = parseInt(sidesStr);
-            for (let i = 0; i < count; i++) {
-                newDice.push({ type: sides, id: Math.random().toString(36).substr(2, 9) });
-            }
-        });
-        setActiveDice(newDice);
-    }, 50);
+        finalizeRoll(newDice);
+    }, 1500);
   };
 
   const totalSelected = Object.values(selection).reduce((a, b) => a + b, 0);
@@ -195,31 +183,47 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
   return (
     <div className="flex flex-col h-full bg-[#EFEBE9] font-serif relative">
 
-      {/* 1. Top Area: 3D Tray */}
-      <div className="flex-1 relative min-h-[40%] w-full">
+      {/* 1. Top Area: 2D Tray */}
+      <div className="flex-1 relative min-h-[40%] w-full flex flex-col items-center justify-center p-8 overflow-hidden">
 
-          {/* Total Result Sign */}
-          <div className="absolute top-6 left-0 right-0 z-10 flex justify-center pointer-events-none">
-             <div className={`transition-all duration-500 transform ${resultState ? 'translate-y-0 opacity-100' : '-translate-y-8 opacity-0'}`}>
+          {/* Background Texture/Effect for Tray */}
+          <div className="absolute inset-0 bg-[#4E342E] opacity-10 pointer-events-none radial-gradient"></div>
+
+          {/* Dice Container */}
+          <div className="flex flex-wrap gap-8 items-center justify-center max-w-5xl z-10 perspective-1000">
+             {activeDice.map((die, index) => (
+                 <div key={die.id} className="transform transition-all duration-500 animate-in zoom-in-50 fade-in slide-in-from-bottom-4">
+                     <Die2D
+                        sides={die.sides}
+                        finalResult={die.result}
+                        rolling={isRolling}
+                        delay={index * 100} // Stagger effect
+                     />
+                 </div>
+             ))}
+             {activeDice.length === 0 && !resultState && (
+                 <div className="text-[#8D6E63] opacity-40 font-bold text-xl italic select-none">
+                     Zarları buraya yuvarla...
+                 </div>
+             )}
+          </div>
+
+          {/* Total Result Sign - Only show when done rolling and has result */}
+          {resultState && !isRolling && (
+             <div className="absolute top-6 left-0 right-0 z-20 flex justify-center pointer-events-none animate-in slide-in-from-top-4 fade-in duration-500">
                  <div
                     className="relative px-16 py-4 bg-gradient-to-b from-[#8D6E63] to-[#4E342E] border-4 border-[#3E2723] rounded-lg shadow-2xl text-[#FFECB3] text-3xl font-black tracking-widest"
                     style={{ boxShadow: '0 10px 20px rgba(0,0,0,0.5)' }}
                  >
                      <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')] mix-blend-overlay pointer-events-none"></div>
-                     {resultState ? `TOPLAM: ${resultState.total}` : ''}
+                     TOPLAM: {resultState.total}
                      <div className="absolute top-2 left-2 w-3 h-3 bg-[#271c19] rounded-full shadow-inner border border-[#5D4037]"></div>
                      <div className="absolute top-2 right-2 w-3 h-3 bg-[#271c19] rounded-full shadow-inner border border-[#5D4037]"></div>
                      <div className="absolute bottom-2 left-2 w-3 h-3 bg-[#271c19] rounded-full shadow-inner border border-[#5D4037]"></div>
                      <div className="absolute bottom-2 right-2 w-3 h-3 bg-[#271c19] rounded-full shadow-inner border border-[#5D4037]"></div>
                  </div>
              </div>
-          </div>
-
-          <DiceCanvas
-            dice={activeDice}
-            rolling={isRolling}
-            onDieSettled={handleDieSettled}
-          />
+          )}
       </div>
 
       {/* 2. Middle Area: Selection & Controls */}
