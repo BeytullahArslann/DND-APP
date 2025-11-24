@@ -5,6 +5,8 @@ export interface RollLog {
   uid: string;
   sides?: number;
   result: number | string;
+  total?: number;
+  diceResults?: { sides: number; result: number }[];
   timestamp?: any; // Firestore Timestamp
   type: 'dice' | 'attack' | 'spell';
   spellName?: string;

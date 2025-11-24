@@ -113,16 +113,19 @@ describe('DiceRoller Component', () => {
     const totalElement = screen.getByText(/TOPLAM:/);
     expect(totalElement).toBeInTheDocument();
 
-    // 7. Verify Firestore interaction
+    // 7. Verify Firestore interaction (Combined format)
     expect(addDoc).toHaveBeenCalledTimes(1);
     expect(addDoc).toHaveBeenCalledWith(
         { id: 'mock-collection-ref' },
         expect.objectContaining({
             uid: mockUser.uid,
-            sides: 6,
             type: 'dice',
             playerName: 'Test User',
-            timestamp: 'mock-timestamp'
+            timestamp: 'mock-timestamp',
+            // Check for new structure
+            diceResults: expect.arrayContaining([
+                expect.objectContaining({ sides: 6 })
+            ])
         })
     );
   });
