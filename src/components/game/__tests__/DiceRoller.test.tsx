@@ -81,6 +81,18 @@ describe('DiceRoller Component', () => {
     expect(screen.getByText('d6')).toBeInTheDocument();
   });
 
+  it('allows selecting d100', () => {
+    render(<DiceRoller user={mockUser} roomCode={mockRoomCode} />);
+
+    const d100Btn = screen.getByText('100', { selector: 'span' }).closest('button');
+    expect(d100Btn).toBeInTheDocument();
+
+    fireEvent.click(d100Btn!);
+
+    expect(screen.getByText('1x')).toBeInTheDocument();
+    expect(screen.getByText('d100')).toBeInTheDocument();
+  });
+
   it('handles rolling flow correctly: Selection -> Rolling -> Result', async () => {
     render(<DiceRoller user={mockUser} roomCode={mockRoomCode} />);
 
