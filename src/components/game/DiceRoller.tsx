@@ -85,7 +85,8 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
           diceResults: diceResults
       };
 
-      setSelection({});
+      // We do NOT clear selection here, allowing user to re-roll same dice.
+      // setSelection({});
 
       try {
           await addDoc(collection(db, 'artifacts', appId, 'public', 'data', `room_${roomCode}_rolls`), rollData);
