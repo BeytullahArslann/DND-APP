@@ -44,6 +44,7 @@ const AdminLayout: React.FC = () => {
     { path: '/admin/backgrounds', icon: <Book size={20} />, label: 'Geçmişler' },
     { path: '/admin/spells', icon: <Sparkles size={20} />, label: 'Büyüler' },
     { path: '/admin/weapons', icon: <Sword size={20} />, label: 'Silahlar' },
+    { path: '/admin/armors', icon: <Sword size={20} />, label: 'Zırhlar' },
     { path: '/admin/users', icon: <Users size={20} />, label: 'Kullanıcılar' },
   ];
 

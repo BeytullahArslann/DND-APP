@@ -4,6 +4,14 @@ import { BackgroundDocument } from '../../types/cms';
 import { Save, Trash2, Plus, Edit, X, ChevronDown, ChevronRight } from 'lucide-react';
 import RichTextEditor from '../../components/RichTextEditor';
 
+// Must match keys in CharacterSheet for automation
+const SKILL_KEYS = [
+    'acrobatics', 'animal_handling', 'arcana', 'athletics', 'deception',
+    'history', 'insight', 'intimidation', 'investigation', 'medicine',
+    'nature', 'perception', 'performance', 'persuasion', 'religion',
+    'sleight_of_hand', 'stealth', 'survival'
+];
+
 interface EditFormProps {
   editingBackground: Partial<BackgroundDocument> | null;
   setEditingBackground: (bg: Partial<BackgroundDocument> | null) => void;
@@ -34,6 +42,21 @@ const EditForm: React.FC<EditFormProps> = ({ editingBackground, setEditingBackgr
                   ...prev.translations?.tr,
                   [key]: value
               }
+          }
+      }));
+  };
+
+  const toggleSkill = (skill: string) => {
+      const currentSkills = formData.bonuses?.skills || [];
+      const newSkills = currentSkills.includes(skill)
+        ? currentSkills.filter(s => s !== skill)
+        : [...currentSkills, skill];
+
+      setFormData(prev => ({
+          ...prev,
+          bonuses: {
+              ...prev.bonuses,
+              skills: newSkills
           }
       }));
   };
@@ -86,7 +109,7 @@ const EditForm: React.FC<EditFormProps> = ({ editingBackground, setEditingBackgr
 
               <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Skill Proficiencies</label>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Display Text (Skill Proficiencies)</label>
                     <input
                       type="text"
                       className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
@@ -95,13 +118,32 @@ const EditForm: React.FC<EditFormProps> = ({ editingBackground, setEditingBackgr
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Tool Proficiencies</label>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Display Text (Tool Proficiencies)</label>
                     <input
                       type="text"
                       className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
                       value={formData.toolProficiencies || ''}
                       onChange={e => handleChange('toolProficiencies', e.target.value)}
                     />
+                  </div>
+              </div>
+
+              {/* AUTOMATION SECTION */}
+              <div className="bg-indigo-900/20 border border-indigo-500/30 p-4 rounded mt-4">
+                  <h4 className="font-bold text-indigo-400 mb-2">Automation Mechanics</h4>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">Skill Proficiencies (Select for auto-fill)</label>
+                  <div className="grid grid-cols-3 gap-2">
+                      {SKILL_KEYS.map(skill => (
+                          <label key={skill} className="flex items-center space-x-2 cursor-pointer hover:bg-white/5 p-1 rounded">
+                              <input
+                                type="checkbox"
+                                checked={(formData.bonuses?.skills || []).includes(skill)}
+                                onChange={() => toggleSkill(skill)}
+                                className="rounded text-indigo-500 focus:ring-indigo-500"
+                              />
+                              <span className="capitalize text-sm text-gray-300">{skill.replace('_', ' ')}</span>
+                          </label>
+                      ))}
                   </div>
               </div>
 
@@ -319,7 +361,7 @@ const BackgroundsEditor: React.FC = () => {
         <h1 className="text-3xl font-bold">Geçmiş (Background) Yönetimi</h1>
         <div className="flex items-center gap-4">
           <button
-            onClick={() => setEditingBackground({ name: '', description: '' })}
+            onClick={() => setEditingBackground({ name: '', description: '', bonuses: { skills: [] } })}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white"
           >
             <Plus size={20} /> Yeni Geçmiş
@@ -338,6 +380,13 @@ const BackgroundsEditor: React.FC = () => {
                    )}
               </div>
               <p className="text-gray-400 text-sm truncate max-w-xl" dangerouslySetInnerHTML={{ __html: bg.description.substring(0, 100) + '...' }}></p>
+              {bg.bonuses?.skills && bg.bonuses.skills.length > 0 && (
+                  <div className="flex gap-1 mt-1">
+                      {bg.bonuses.skills.map(s => (
+                          <span key={s} className="text-xs bg-indigo-900/50 text-indigo-300 px-2 py-0.5 rounded capitalize">{s.replace('_', ' ')}</span>
+                      ))}
+                  </div>
+              )}
             </div>
             <div className="flex gap-2">
               <button

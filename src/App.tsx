@@ -14,6 +14,7 @@ import RulesEditor from './pages/admin/RulesEditor';
 import BackgroundsEditor from './pages/admin/BackgroundsEditor';
 import SpellsEditor from './pages/admin/SpellsEditor';
 import WeaponsEditor from './pages/admin/WeaponsEditor';
+import ArmorsEditor from './pages/admin/ArmorsEditor';
 import UsersPage from './pages/admin/UsersPage';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -58,6 +59,7 @@ const router = createBrowserRouter([
       { path: 'backgrounds', element: <BackgroundsEditor /> },
       { path: 'spells', element: <SpellsEditor /> },
       { path: 'weapons', element: <WeaponsEditor /> },
+      { path: 'armors', element: <ArmorsEditor /> },
       { path: 'users', element: <UsersPage /> },
     ]
   },

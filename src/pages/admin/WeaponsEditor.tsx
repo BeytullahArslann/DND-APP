@@ -59,7 +59,18 @@ const EditForm: React.FC<EditFormProps> = ({ editingWeapon, setEditingWeapon, fe
 
   const onSave = async () => {
     try {
-      await cmsService.saveWeapon(formData);
+      // Re-construct the `damage` string for legacy compatibility or display
+      const count = formData.diceCount || 1;
+      const die = formData.diceValue || 'd6';
+      const bonus = formData.damageBonus || 0;
+
+      let dmgStr = `${count}${die}`;
+      if (bonus > 0) dmgStr += `+${bonus}`;
+      else if (bonus < 0) dmgStr += `${bonus}`;
+
+      const toSave = { ...formData, damage: dmgStr };
+
+      await cmsService.saveWeapon(toSave);
       setEditingWeapon(null);
       fetchWeapons();
     } catch (e) {
@@ -101,25 +112,62 @@ const EditForm: React.FC<EditFormProps> = ({ editingWeapon, setEditingWeapon, fe
                     placeholder="Simple Melee, Martial Ranged..."
                     />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Damage</label>
-                    <input
-                    type="text"
-                    className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
-                    value={formData.damage || ''}
-                    onChange={e => handleChange('damage', e.target.value)}
-                    placeholder="1d8"
-                    />
+
+                {/* Structured Damage Input */}
+                <div className="col-span-2 grid grid-cols-3 gap-2 bg-gray-900/50 p-3 rounded border border-gray-700">
+                    <div className="text-sm font-bold text-gray-400 col-span-3 mb-1">Damage Mechanic</div>
+                    <div>
+                        <label className="block text-xs text-gray-500 mb-1">Dice Count</label>
+                        <input
+                            type="number"
+                            min="1"
+                            className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
+                            value={formData.diceCount || 1}
+                            onChange={e => handleChange('diceCount', parseInt(e.target.value))}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs text-gray-500 mb-1">Die Type</label>
+                        <select
+                            className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
+                            value={formData.diceValue || 'd6'}
+                            onChange={e => handleChange('diceValue', e.target.value)}
+                        >
+                            {['d4','d6','d8','d10','d12','d20'].map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs text-gray-500 mb-1">Bonus (+)</label>
+                        <input
+                            type="number"
+                            className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
+                            value={formData.damageBonus || 0}
+                            onChange={e => handleChange('damageBonus', parseInt(e.target.value))}
+                        />
+                    </div>
                 </div>
+
                 <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1">Damage Type</label>
-                    <input
-                    type="text"
-                    className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
-                    value={formData.damageType || ''}
-                    onChange={e => handleChange('damageType', e.target.value)}
-                    placeholder="slashing"
-                    />
+                    <select
+                        className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white"
+                        value={formData.damageType || 'Slashing'}
+                        onChange={e => handleChange('damageType', e.target.value)}
+                    >
+                        <option value="Slashing">Slashing</option>
+                        <option value="Piercing">Piercing</option>
+                        <option value="Bludgeoning">Bludgeoning</option>
+                        <option value="Fire">Fire</option>
+                        <option value="Cold">Cold</option>
+                        <option value="Lightning">Lightning</option>
+                        <option value="Poison">Poison</option>
+                        <option value="Acid">Acid</option>
+                        <option value="Psychic">Psychic</option>
+                        <option value="Necrotic">Necrotic</option>
+                        <option value="Radiant">Radiant</option>
+                        <option value="Force">Force</option>
+                        <option value="Thunder">Thunder</option>
+                    </select>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1">Weight</label>
@@ -283,7 +331,7 @@ const WeaponsEditor: React.FC = () => {
         <h1 className="text-3xl font-bold">Silah Yönetimi</h1>
         <div className="flex items-center gap-4">
           <button
-            onClick={() => setEditingWeapon({ name: '', category: '', properties: [] })}
+            onClick={() => setEditingWeapon({ name: '', category: '', properties: [], diceCount: 1, diceValue: 'd6', damageBonus: 0 })}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white"
           >
             <Plus size={20} /> Yeni Silah

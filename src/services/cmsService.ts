@@ -24,6 +24,7 @@ import { convertRulesToHtml, normalizeSpellData } from '../utils/dataConverters'
 const RULES_COLLECTION = `artifacts/${appId}/rules`;
 const SPELLS_COLLECTION = `artifacts/${appId}/spells`;
 const WEAPONS_COLLECTION = `artifacts/${appId}/weapons`;
+const ARMORS_COLLECTION = `artifacts/${appId}/armors`;
 const BACKGROUNDS_COLLECTION = `artifacts/${appId}/backgrounds`;
 
 const rulesData = rulesDataRaw as unknown as QuickReferenceData;
@@ -308,6 +309,30 @@ export const cmsService = {
     await deleteDoc(doc(db, WEAPONS_COLLECTION, id));
   },
 
+  // --- Armors ---
+  async getArmors(): Promise<import('../types/cms').ArmorDocument[]> {
+    const q = query(
+      collection(db, ARMORS_COLLECTION)
+    );
+    const snapshot = await getDocs(q);
+    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as import('../types/cms').ArmorDocument));
+    return docs.sort((a, b) => a.name.localeCompare(b.name));
+  },
+
+  async saveArmor(armor: Partial<import('../types/cms').ArmorDocument>) {
+    const data = sanitizeForFirestore(sanitizeData(armor));
+    if (armor.id) {
+      const docRef = doc(db, ARMORS_COLLECTION, armor.id);
+      await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() });
+    } else {
+      await addDoc(collection(db, ARMORS_COLLECTION), { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    }
+  },
+
+  async deleteArmor(id: string) {
+    await deleteDoc(doc(db, ARMORS_COLLECTION, id));
+  },
+
   // --- Backgrounds ---
   async getBackgrounds(): Promise<BackgroundDocument[]> {
     const q = query(
@@ -361,6 +386,7 @@ export const cmsService = {
     await deleteCollection(SPELLS_COLLECTION);
     await deleteCollection(BACKGROUNDS_COLLECTION);
     await deleteCollection(WEAPONS_COLLECTION);
+    await deleteCollection(ARMORS_COLLECTION);
 
     await this.seedDatabase();
     console.log("Database reset and seeded.");

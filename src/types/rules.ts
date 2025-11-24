@@ -10,6 +10,8 @@ export interface RuleEntry {
   style?: string; // for lists or rows
   href?: { type: string; path: string }; // for images
   text?: string; // for links
+  entry?: string; // for items in lists
+  row?: (string | RuleEntry)[]; // for explicit 'row' type
 }
 
 export interface RuleSection {

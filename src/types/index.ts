@@ -64,6 +64,19 @@ export interface CharacterData {
   spellSlots: {[key: number]: number};
   skills: string[];
   weapons: Weapon[];
+  armor?: {
+    id: string;
+    name: string;
+    ac: number;
+    type: string;
+    dexBonus: string; // 'Full', 'Max 2', 'None'
+    stealthDisadvantage: boolean;
+  } | null;
+  shield?: {
+    id: string;
+    name: string;
+    ac: number;
+  } | null;
 }
 
 export interface PlayerPresence {

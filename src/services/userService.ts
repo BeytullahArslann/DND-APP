@@ -10,7 +10,8 @@ import {
   collection,
   where,
   getDocs,
-  limit
+  limit,
+  deleteDoc
 } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { db, appId, usingDemoConfig } from '../lib/firebase';
