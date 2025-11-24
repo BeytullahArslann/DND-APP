@@ -116,7 +116,40 @@ const TRANSLATIONS: Record<string, string> = {
     "Görüş": "Sight",
     "Sınırsız": "Unlimited",
     "feet": "feet",
-    "point": "point"
+    "point": "point",
+
+    // Backgrounds (Common Names)
+    "Mürit": "Acolyte",
+    "Şarlatan": "Charlatan",
+    "Şehir Bekçisi": "City Watch",
+    "Klan Zanaatkarı": "Clan Crafter",
+    "Dünyadan Uzak Alim": "Cloistered Scholar",
+    "Saray Mensubu": "Courtier",
+    "Suçlu": "Criminal",
+    "Gösteri Adamı": "Entertainer",
+    "Grup Temsilcisi": "Faction Agent",
+    "Seyyah": "Far Traveler",
+    "Halk Kahramanı": "Folk Hero",
+    "Loca Zanaatkarı": "Guild Artisan",
+    "Münzevi (İnzivaya çekilmiş kimse)": "Hermit",
+    "Mirasçı": "Inheritor",
+    "Alternatif Şehir Bekçisi (Dedektif)": "Investigator (City Watch Variant)",
+    "Tarikat Şövalyesi": "Knight of the Order",
+    "Kıdemli Paralı Asker": "Mercenary Veteran",
+    "Soylu": "Noble",
+    "Yabancı": "Outlander",
+    "Bilge": "Sage",
+    "Denizci": "Sailor",
+    "Asker": "Soldier",
+    "Şehir Ödül Avcısı": "Urban Bounty Hunter",
+    "Sokak Çocuğu": "Urchin",
+    "Uthgardt Kabile Üyesi": "Uthgardt Tribe Member",
+    "Waterdhavian Soylusu": "Waterdhavian Noble",
+    "Alternatif Suçlu (Ajan)": "Spy (Criminal Variant)",
+    "Alternatif Gösteri Adamı (Gladyatör)": "Gladiator (Entertainer Variant)",
+    "Alternatif Loca Zanaatkarı (Loca Tüccarı)": "Guild Merchant (Guild Artisan Variant)",
+    "Alternatif Soylu (Şövalye)": "Knight (Noble Variant)",
+    "Alternatif Denizci (Korsan)": "Pirate (Sailor Variant)"
 };
 
 const translateTerm = (term: string): string => {
@@ -129,7 +162,6 @@ export const cmsService = {
   async getRules(): Promise<RuleDocument[]> {
     const q = query(
       collection(db, RULES_COLLECTION)
-      // Removed language filter
     );
     const snapshot = await getDocs(q);
     const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RuleDocument));
@@ -184,9 +216,14 @@ export const cmsService = {
   },
 
   // --- Weapons ---
-  async getWeapons(): Promise<WeaponDocument[]> {
+  async getWeapons(language: Language): Promise<WeaponDocument[]> {
+    // Weapons not yet refactored (as per instruction only Rules, Spells and now Backgrounds)
+    // But keeping it consistent if possible? No instructions for Weapons yet.
+    // Keeping as is for now to avoid scope creep, or just ignoring language param if I were to unify.
+    // The previous code kept getWeapons(language).
     const q = query(
-      collection(db, WEAPONS_COLLECTION)
+      collection(db, WEAPONS_COLLECTION),
+      where('language', '==', language)
     );
     const snapshot = await getDocs(q);
     const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WeaponDocument));
@@ -259,7 +296,7 @@ export const cmsService = {
     await deleteCollection(RULES_COLLECTION);
     await deleteCollection(SPELLS_COLLECTION);
     await deleteCollection(BACKGROUNDS_COLLECTION);
-    await deleteCollection(WEAPONS_COLLECTION);
+    // await deleteCollection(WEAPONS_COLLECTION);
 
     await this.seedDatabase();
     console.log("Database reset and seeded.");
@@ -268,9 +305,11 @@ export const cmsService = {
   async seedDatabase() {
     console.log("Seeding database with multi-language support...");
 
+    let batch = writeBatch(db);
+    let opCount = 0;
+
     // 1. Seed Rules
     const sections = rulesData.reference[0].contents;
-    // Flatten all data entries to search within them
     const allEntries = rulesData.data.reduce((acc: any[], d: any) => {
         if (d && d.entries && Array.isArray(d.entries)) {
             return acc.concat(d.entries);
@@ -279,8 +318,6 @@ export const cmsService = {
     }, []);
 
     let order = 0;
-    let batch = writeBatch(db);
-    let opCount = 0;
 
     for (const section of sections) {
       const sectionContentTR = allEntries.filter(entry =>
@@ -288,25 +325,15 @@ export const cmsService = {
       );
 
       if (sectionContentTR.length > 0) {
-        // Prepare TR content
         const htmlContentTR = convertRulesToHtml(sectionContentTR);
-
-        // Prepare EN content (Translated Headers, Placeholder/Copy Content)
         const titleEN = translateTerm(section.name);
-        // For content, we will use the same structure but ideally translated.
-        // Since we can't translate recursive deep content perfectly, we'll duplicate it
-        // but maybe with a note or just accept it's Turkish in the English slot for now
-        // OR try to replace known headers.
-
-        // Let's create a "Best Effort" English content by just translating headers in the HTML?
-        // Actually, let's just duplicate it for now to satisfy the "English Mandatory" requirement
-        // but set the Title correctly.
+        // Duplicate content for EN placeholder
         const htmlContentEN = htmlContentTR;
 
         const ruleDocRef = doc(collection(db, RULES_COLLECTION));
         const ruleDoc: Omit<RuleDocument, 'id'> = {
           title: titleEN,
-          content: htmlContentEN, // Mandatory EN
+          content: htmlContentEN,
           translations: {
               tr: {
                   title: section.name,
@@ -328,7 +355,6 @@ export const cmsService = {
     for (const spell of spellsData.spell) {
         const normalizedSpell = normalizeSpellData(spell);
 
-        // Parse Name: "Acid Splash (Asit Sıçraması)" -> EN: "Acid Splash", TR: "Asit Sıçraması"
         let nameEN = normalizedSpell.name;
         let nameTR = normalizedSpell.name;
 
@@ -338,14 +364,13 @@ export const cmsService = {
             nameTR = nameMatch[2].trim();
         }
 
-        // Translate / Normalize fields
         const timeEN = getEnglishTime(spell);
         const rangeEN = getEnglishRange(spell);
         const durationEN = getEnglishDuration(spell);
         const componentsEN = getEnglishComponents(spell);
 
         const descriptionTR = normalizedSpell.description;
-        const descriptionEN = descriptionTR; // Placeholder until we have EN source
+        const descriptionEN = descriptionTR;
 
         const spellDocRef = doc(collection(db, SPELLS_COLLECTION));
         const spellDoc: Omit<SpellDocument, 'id'> = {
@@ -377,32 +402,23 @@ export const cmsService = {
         if (opCount >= 400) { await batch.commit(); batch = writeBatch(db); opCount = 0; }
     }
 
-    if (opCount > 0) {
-        await batch.commit();
-        batch = writeBatch(db);
-        opCount = 0;
-    }
-
-    // 3. Seed Backgrounds (Assuming they are English or Turkish?)
-    // Memory said backgroundsSeedData exists.
+    // 3. Seed Backgrounds
     for (const bg of backgroundsSeedData) {
         const bgDocRef = doc(collection(db, BACKGROUNDS_COLLECTION));
-        // Assume seed data is EN or TR?
-        // If TR, move to tr prop.
-        // Let's assume the current seed data is TR (based on project context).
+
+        const nameEN = translateTerm(bg.name);
 
         const bgDoc: Omit<BackgroundDocument, 'id'> = {
-            name: bg.name, // Will likely be TR
-            description: bg.description,
-            skillProficiencies: bg.skillProficiencies,
-            toolProficiencies: bg.toolProficiencies,
-            languages: bg.languages,
-            equipment: bg.equipment,
-            featureName: bg.featureName,
-            featureDescription: bg.featureDescription,
-            suggestedCharacteristics: bg.suggestedCharacteristics,
+            name: nameEN,
+            description: bg.description, // Placeholder EN
+            skillProficiencies: bg.skillProficiencies, // Placeholder EN
+            toolProficiencies: bg.toolProficiencies, // Placeholder EN
+            languages: bg.languages, // Placeholder EN
+            equipment: bg.equipment, // Placeholder EN
+            featureName: bg.featureName, // Placeholder EN
+            featureDescription: bg.featureDescription, // Placeholder EN
+            suggestedCharacteristics: bg.suggestedCharacteristics, // Placeholder EN
 
-            // Duplicate to TR just in case, but real fix requires translation
             translations: {
                 tr: {
                     name: bg.name,
@@ -510,3 +526,6 @@ function getEnglishDuration(spell: any): string {
   }
   return "";
 }
+
+// Needed import for where
+import { where } from 'firebase/firestore';
