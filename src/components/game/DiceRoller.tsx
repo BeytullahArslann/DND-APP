@@ -73,27 +73,22 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
       setResultState({ total, details: detailsStr });
       setIsRolling(false); // Stop rolling animation state
 
-      // Batch write to Firestore
-      const promises = diceResults.map(r =>
-            addDoc(collection(db, 'artifacts', appId, 'public', 'data', `room_${roomCode}_rolls`), {
-            playerName: user.displayName,
-            uid: user.uid,
-            sides: r.sides,
-            result: r.result,
-            timestamp: serverTimestamp(),
-            type: 'dice'
-        })
-      );
+      // Single write to Firestore with combined results
+      const rollData: any = {
+          playerName: user.displayName,
+          uid: user.uid,
+          timestamp: serverTimestamp(),
+          type: 'dice',
+          total: total,
+          // We can populate 'result' with total as a fallback/primary display value
+          result: total,
+          diceResults: diceResults
+      };
 
-      // We do NOT clear selection immediately so user can see what they rolled
-      // But we can clear it if they roll again or manually clear.
-      // The previous code cleared selection, so let's stick to that for now or clear it on next interaction?
-      // Actually, keeping selection allows rerolling same set.
-      // But typically, you clear after a roll.
       setSelection({});
 
       try {
-          await Promise.all(promises);
+          await addDoc(collection(db, 'artifacts', appId, 'public', 'data', `room_${roomCode}_rolls`), rollData);
       } catch (error) {
           console.error("Error saving rolls:", error);
       }
@@ -165,7 +160,30 @@ export const DiceRoller = ({ user, roomCode }: DiceRollerProps) => {
               </div>
           );
       }
-      // Default dice
+
+      // New Combined Dice Format
+      if (roll.diceResults && roll.diceResults.length > 0) {
+          return (
+             <div className="flex-1 flex flex-col min-w-0 justify-center">
+                 <div className="flex items-center gap-2 mb-1">
+                     <div className="bg-[#3E2723] px-2 py-0.5 rounded text-xs text-[#FFECB3] font-bold border border-[#5D4037]">
+                         {roll.diceResults.length} zar
+                     </div>
+                     <span className="text-[#8D6E63] text-xs">attı, toplam:</span>
+                     <span className="text-lg font-bold text-white drop-shadow-md">{roll.total || roll.result}</span>
+                 </div>
+                 <div className="flex flex-wrap gap-1">
+                     {roll.diceResults.map((r, idx) => (
+                         <span key={idx} className="text-[10px] bg-[#5D4037] text-[#D7CCC8] px-1 rounded border border-[#3E2723]">
+                             d{r.sides}: <span className="font-bold text-white">{r.result}</span>
+                         </span>
+                     ))}
+                 </div>
+             </div>
+          );
+      }
+
+      // Legacy Single Dice
       return (
         <div className="flex-1 flex items-center gap-2">
             <div className="bg-[#3E2723] px-2 py-0.5 rounded text-xs text-[#FFECB3] font-bold border border-[#5D4037]">
