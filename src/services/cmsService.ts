@@ -14,15 +14,17 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db, appId } from '../lib/firebase';
-import { RuleDocument, SpellDocument, WeaponDocument, Language } from '../types/cms';
+import { RuleDocument, SpellDocument, WeaponDocument, BackgroundDocument, Language } from '../types/cms';
 import rulesDataRaw from '../data/rules.json';
 import spellsDataRaw from '../data/spells.json';
+import { backgroundsSeedData } from '../data/backgroundsSeed';
 import { QuickReferenceData, SpellsData } from '../types/rules';
 import { convertRulesToHtml, normalizeSpellData } from '../utils/dataConverters';
 
 const RULES_COLLECTION = `artifacts/${appId}/rules`;
 const SPELLS_COLLECTION = `artifacts/${appId}/spells`;
 const WEAPONS_COLLECTION = `artifacts/${appId}/weapons`;
+const BACKGROUNDS_COLLECTION = `artifacts/${appId}/backgrounds`;
 
 const rulesData = rulesDataRaw as unknown as QuickReferenceData;
 const spellsData = spellsDataRaw as unknown as SpellsData;
@@ -139,6 +141,31 @@ export const cmsService = {
     await deleteDoc(doc(db, WEAPONS_COLLECTION, id));
   },
 
+  // --- Backgrounds ---
+  async getBackgrounds(language: Language): Promise<BackgroundDocument[]> {
+    const q = query(
+      collection(db, BACKGROUNDS_COLLECTION),
+      where('language', '==', language)
+    );
+    const snapshot = await getDocs(q);
+    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BackgroundDocument));
+    return docs.sort((a, b) => a.name.localeCompare(b.name));
+  },
+
+  async saveBackground(background: Partial<BackgroundDocument>) {
+    const data = sanitizeForFirestore(sanitizeData(background));
+    if (background.id) {
+      const docRef = doc(db, BACKGROUNDS_COLLECTION, background.id);
+      await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() });
+    } else {
+      await addDoc(collection(db, BACKGROUNDS_COLLECTION), { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    }
+  },
+
+  async deleteBackground(id: string) {
+    await deleteDoc(doc(db, BACKGROUNDS_COLLECTION, id));
+  },
+
   // --- Seeding ---
   async resetAndSeedDatabase() {
     console.log("Resetting and seeding database...");
@@ -167,6 +194,7 @@ export const cmsService = {
 
     await deleteCollection(RULES_COLLECTION);
     await deleteCollection(SPELLS_COLLECTION);
+    await deleteCollection(BACKGROUNDS_COLLECTION);
     // await deleteCollection(WEAPONS_COLLECTION); // Optional, if we had weapons seed data
 
     await this.seedDatabase();
@@ -236,6 +264,26 @@ export const cmsService = {
         };
 
         batch.set(spellDocRef, spellDoc);
+        opCount++;
+        if (opCount >= 400) { await batch.commit(); batch = writeBatch(db); opCount = 0; }
+    }
+
+    if (opCount > 0) {
+        await batch.commit();
+        batch = writeBatch(db);
+        opCount = 0;
+    }
+
+    // 3. Seed Backgrounds (TR)
+    for (const bg of backgroundsSeedData) {
+        const bgDocRef = doc(collection(db, BACKGROUNDS_COLLECTION));
+        const bgDoc: Omit<BackgroundDocument, 'id'> = {
+            ...bg,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        };
+
+        batch.set(bgDocRef, bgDoc);
         opCount++;
         if (opCount >= 400) { await batch.commit(); batch = writeBatch(db); opCount = 0; }
     }
