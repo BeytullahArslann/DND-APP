@@ -126,3 +126,26 @@ export interface Room {
   createdAt?: any;
   // Add other room specific fields here if needed
 }
+
+export interface NPC {
+  id: string;
+  name: string;
+  description: string; // Karakter Tarifi
+  age: string;
+  height: string;
+  weight: string;
+  appearance: string; // Görünüm Seçenekleri
+  imageUrl?: string;
+  isPrivate: boolean; // Hidden from players
+  roomId: string;
+  createdBy: string; // DM uid
+}
+
+export interface NPCNote {
+  id: string;
+  npcId: string;
+  authorId: string;
+  content: string;
+  isPublic: boolean; // If true, visible to everyone in room. If false, visible only to author.
+  timestamp: number;
+}

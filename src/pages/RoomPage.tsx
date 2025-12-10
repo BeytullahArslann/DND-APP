@@ -14,6 +14,7 @@ import { useRoom } from '../hooks/useRoom';
 import { userService } from '../services/userService';
 import { RoomHeader } from '../components/room/RoomHeader';
 import { RoomBottomNav } from '../components/room/RoomBottomNav';
+import { NPCView } from '../components/game/npc/NPCView';
 import { RoomInvite } from '../types';
 
 export const RoomPage = () => {
@@ -24,7 +25,7 @@ export const RoomPage = () => {
 
   const { roomData, loading } = useRoom(roomId);
 
-  const [activeTab, setActiveTab] = useState<'dice' | 'char' | 'party'>('dice');
+  const [activeTab, setActiveTab] = useState<'dice' | 'char' | 'party' | 'npc'>('dice');
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -155,6 +156,14 @@ export const RoomPage = () => {
                 onSelectPlayer={handleDMSelectPlayer}
                 selectedPlayerId={selectedPlayerId}
             />
+        )}
+
+        {activeTab === 'npc' && (
+          <NPCView
+            roomId={roomId!}
+            userRole={userRole}
+            currentUserUid={user!.uid}
+          />
         )}
       </main>
 
