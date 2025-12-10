@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { cmsService } from '../../services/cmsService';
+import { SystemSettingsPanel } from '../../components/admin/SystemSettingsPanel';
 
 const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -35,6 +36,10 @@ const AdminDashboard: React.FC = () => {
         >
           {loading ? 'İşleniyor...' : 'Veritabanını Sıfırla ve Doldur (Reset & Seed)'}
         </button>
+      </div>
+
+      <div className="mt-8">
+        <SystemSettingsPanel />
       </div>
     </div>
   );
