@@ -17,8 +17,10 @@ const RulesRenderer: React.FC<RulesRendererProps> = ({ entry, depth = 0 }) => {
   }
 
   // Helper to render children entries recursively
+  // Using 'any' for the entries map because the recursive type definition of RuleEntry
+  // can sometimes conflict with the iterator type inferred by TypeScript in this specific context.
   const renderEntries = (entries?: (string | RuleEntry)[]) => {
-    return entries?.map((subEntry, idx) => (
+    return entries?.map((subEntry: string | RuleEntry, idx: number) => (
       <RulesRenderer key={idx} entry={subEntry} depth={depth + 1} />
     ));
   };
@@ -93,14 +95,21 @@ const RulesRenderer: React.FC<RulesRendererProps> = ({ entry, depth = 0 }) => {
                         <td key={cellIdx} className="p-2 border-r border-gray-800 last:border-r-0">
                             {typeof cell === 'object' && cell !== null && (cell as any).type === 'cell' ?
                                 ((cell as any).roll ? `${(cell as any).roll.exact || (cell as any).roll.min}-${(cell as any).roll.max}` : '')
-                                : <RulesRenderer entry={cell} depth={depth} />
+                                : (
+                                  Array.isArray(cell) ?
+                                    cell.map((c: any, i: number) => <RulesRenderer key={i} entry={c} depth={depth} />) :
+                                    <RulesRenderer entry={cell as string | RuleEntry} depth={depth} />
+                                )
                             }
                         </td>
                         ))
                     ) : (
                         // Handle object rows (like special styled rows or other structures) that are not wrapped arrays
                         <td colSpan={entry.colLabels?.length || 1} className="p-2">
-                            <RulesRenderer entry={row} depth={depth} />
+                            {Array.isArray(row) ?
+                                row.map((r: any, i: number) => <RulesRenderer key={i} entry={r} depth={depth} />) :
+                                <RulesRenderer entry={row as string | RuleEntry} depth={depth} />
+                            }
                         </td>
                     )}
                     </tr>
