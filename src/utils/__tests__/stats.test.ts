@@ -33,7 +33,6 @@ describe('stat helpers', () => {
     expect(parseDamage('2d6+3')).toEqual({ diceCount: 2, diceSides: 6, bonus: 3 });
     expect(parseDamage('5d8-2')).toEqual({ diceCount: 5, diceSides: 8, bonus: -2 });
     expect(parseDamage('invalid')).toEqual({ diceCount: 0, diceSides: 0, bonus: 0 });
-    // @ts-expect-error Testing undefined input
-    expect(parseDamage(undefined)).toEqual({ diceCount: 0, diceSides: 0, bonus: 0 });
+    expect(parseDamage(undefined as any)).toEqual({ diceCount: 0, diceSides: 0, bonus: 0 });
   });
 });
