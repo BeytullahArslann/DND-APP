@@ -1,12 +1,12 @@
 import React from 'react';
-import { Scroll, Dices, Users } from 'lucide-react';
+import { Scroll, Dices, Users, Contact } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface RoomBottomNavProps {
-  activeTab: 'dice' | 'char' | 'party';
+  activeTab: 'dice' | 'char' | 'party' | 'npc';
   userRole: string;
   isDM: boolean;
-  onTabChange: (tab: 'dice' | 'char' | 'party') => void;
+  onTabChange: (tab: 'dice' | 'char' | 'party' | 'npc') => void;
 }
 
 export const RoomBottomNav: React.FC<RoomBottomNavProps> = ({
@@ -43,6 +43,14 @@ export const RoomBottomNav: React.FC<RoomBottomNavProps> = ({
         >
           <Users className="w-6 h-6 mb-1" />
           <span className="text-[10px] font-medium">{t('room.party')}</span>
+        </button>
+
+        <button
+          onClick={() => onTabChange('npc')}
+          className={`flex flex-col items-center p-2 rounded-lg transition-colors w-16 ${activeTab === 'npc' ? 'text-amber-500 bg-slate-700' : 'text-slate-400 hover:text-slate-200'}`}
+        >
+          <Contact className="w-6 h-6 mb-1" />
+          <span className="text-[10px] font-medium">NPC</span>
         </button>
       </div>
       <style>{`
