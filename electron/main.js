@@ -17,17 +17,16 @@ function createWindow() {
     },
   });
 
-  // In development, load from Vite dev server
+  // In development, load from Expo Web dev server (default 8081)
   const isDev = !app.isPackaged;
 
   if (isDev) {
-    win.loadURL('http://localhost:5173');
+    // Expo defaults to 8081
+    win.loadURL('http://localhost:8081');
     win.webContents.openDevTools();
   } else {
     // In production, load from the dist folder
-    // The path needs to be relative to the main.js file in the build output
-    // Adjust this based on where electron-builder places things.
-    // Usually 'dist/index.html' relative to app root.
+    // Note: You must run `npx expo export:web` to generate dist
     win.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 }
